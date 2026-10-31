@@ -1,12 +1,19 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var model: AppModel?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.activate(ignoringOtherApps: true)
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--screenshot"), arguments.indices.contains(index + 1) {
-            NSApp.appearance = NSAppearance(named: .aqua)
+            NSApp.appearance = NSAppearance(named: arguments.contains("--dark") ? .darkAqua : .aqua)
+            if arguments.contains("--compact") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    NSApp.windows.first(where: { $0.canBecomeMain })?.setContentSize(NSSize(width: 1020, height: 740))
+                }
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                 guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil }),
                       let view = window.contentView,
@@ -19,20 +26,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Application termination is also handled by the Quit command for active operations.
-        .terminateNow
+        guard let model, model.busy else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = "An engine operation is running."
+        alert.informativeText = "Stop the operation before quitting so Mars can save the report."
+        alert.addButton(withTitle: "Keep Mars open")
+        alert.addButton(withTitle: "Stop operation")
+        if alert.runModal() == .alertSecondButtonReturn { model.cancel() }
+        return .terminateCancel
     }
 }
 
 @main
+@MainActor
 struct MarsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var model = AppModel()
     var body: some Scene {
-        WindowGroup("Mars") {
+        WindowGroup("Mars", id: "main") {
             RootView()
                 .environmentObject(model)
                 .frame(minWidth: 1020, minHeight: 740)
+                .onAppear { delegate.model = model }
                 .alert("Mars needs your attention", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
                     Button("OK") { model.error = nil }
                 } message: { Text(model.error ?? "") }
@@ -75,17 +90,20 @@ struct MarsApp: App {
                 }.keyboardShortcut("q")
             }
         }
-        MenuBarExtra("Mars", systemImage: "shield.lefthalf.filled") {
-            Text(model.busy ? model.operation : "Mars · On-demand scanning")
-            Button("Open Mars") {
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
-            }
-            Button("Scan now") { model.startScan() }.disabled(model.busy || !model.installed)
-            Button("Update definitions") { model.updateDefinitions() }.disabled(model.busy || !model.installed)
-            Divider()
-            Text(model.scheduleSummary)
-            Button("Quit Mars") { if !model.busy { NSApp.terminate(nil) } }.disabled(model.busy)
-        }
+        MenuBarExtra("Mars", systemImage: "shield.lefthalf.filled") { MarsMenu().environmentObject(model) }
+    }
+}
+
+struct MarsMenu: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) var openWindow
+    var body: some View {
+        Text(model.busy ? model.operation : "Mars · On-demand scanning")
+        Button("Open Mars") { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) }
+        Button("Scan now") { model.startScan() }.disabled(model.busy || !model.installed)
+        Button("Update definitions") { model.updateDefinitions() }.disabled(model.busy || !model.installed)
+        Divider()
+        Text(model.scheduleSummary)
+        Button("Quit Mars") { NSApp.terminate(nil) }.disabled(model.busy)
     }
 }

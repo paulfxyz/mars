@@ -90,7 +90,7 @@ public struct ScanParser {
     public func outcome(exitCode: Int32, cancelled: Bool) -> ScanOutcome {
         if cancelled { return .cancelled }
         if !findings.isEmpty { return .threatsFound }
-        if exitCode == 2 || (exitCode == 0 && warnings > 0) { return .incomplete }
+        if exitCode == 2 || (exitCode == 0 && (warnings > 0 || scannedFiles == 0)) { return .incomplete }
         if exitCode != 0 { return .failed }
         return .completed
     }

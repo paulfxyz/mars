@@ -23,7 +23,10 @@ final class MarsCoreTests: XCTestCase {
         XCTAssertEqual(parser.outcome(exitCode: 3, cancelled: false), .failed)
         XCTAssertEqual(parser.outcome(exitCode: 1, cancelled: false), .failed)
         XCTAssertEqual(parser.outcome(exitCode: 0, cancelled: true), .cancelled)
-        XCTAssertEqual(parser.outcome(exitCode: 0, cancelled: false), .completed)
+        XCTAssertEqual(parser.outcome(exitCode: 0, cancelled: false), .incomplete)
+        var scanned = ScanParser()
+        scanned.consume("Scanned files: 1")
+        XCTAssertEqual(scanned.outcome(exitCode: 0, cancelled: false), .completed)
     }
     func testWarningsAndFileSummary() {
         var parser = ScanParser()

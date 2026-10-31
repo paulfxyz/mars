@@ -48,9 +48,15 @@ final class AppModel: ObservableObject {
             record.scannedFiles = 24861; record.outcome = .completed
             record.note = "Synthetic preview data. No real scan has run."
             history = [record]
+            let arguments = ProcessInfo.processInfo.arguments
+            if let index = arguments.firstIndex(of: "--page"), arguments.indices.contains(index + 1),
+               let requested = Page.allCases.first(where: { $0.rawValue.lowercased() == arguments[index + 1] }) { page = requested }
         }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            Task { @MainActor in if let self, !self.busy && !self.demo { self.refresh() } }
+            Task { @MainActor [weak self] in
+                guard let self, !self.busy && !self.demo else { return }
+                self.refresh()
+            }
         }
     }
     func refresh() {

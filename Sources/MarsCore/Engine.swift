@@ -46,7 +46,7 @@ public enum ProcessRunner {
             let chunk = pipe.fileHandleForReading.availableData
             if chunk.isEmpty { break }
             // Bound each raw log to 32 MiB. Parsing and live output continue after this limit.
-            if let output, (try? output.offset()) ?? 0 < 32 * 1024 * 1024 { try? output.write(contentsOf: chunk) }
+            if let output, ((try? output.offset()) ?? 0) < 32 * 1024 * 1024 { try? output.write(contentsOf: chunk) }
             pending.append(chunk)
             while let newline = pending.firstIndex(of: 10) {
                 let data = pending[..<newline]
@@ -118,7 +118,7 @@ public struct Engine {
                          "--follow-dir-symlinks=0", "--follow-file-symlinks=0", "--alert-exceeds-max=yes"]
         if fullMac {
             // Exclude external volumes and virtual/runtime mounts, not the writable Data volume.
-            arguments += ["--exclude-dir=^/Volumes(/|$)", "--exclude-dir=^/dev(/|$)",
+            arguments += ["--exclude-dir=^(/System/Volumes/Data)?/Volumes(/|$)", "--exclude-dir=^/dev(/|$)",
                           "--exclude-dir=^/System/Volumes/(Preboot|VM|Update|xarts|iSCPreboot|Hardware)(/|$)"]
         }
         return arguments + ["--"] + targets
