@@ -1,0 +1,45 @@
+name: Native macOS build and tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test engine
+        run: brew install clamav
+      - name: Unit and real-engine fixture tests
+        env:
+          MARS_CLAMAV_TESTS: "1"
+        run: swift test
+      - name: Package universal native app
+        run: bash scripts/package.sh
+      - name: Capture native interface with synthetic data
+        run: |
+          dist/Mars.app/Contents/MacOS/mars --demo --screenshot "$PWD/dist/screenshot-overview.png" &
+          PID=$!
+          for ATTEMPT in {1..30}; do
+            if ! kill -0 "$PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$PID" 2>/dev/null; then kill "$PID"; exit 1; fi
+          wait "$PID"
+          test -s dist/screenshot-overview.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mars-macOS-universal
+          path: |
+            dist/Mars-*-macOS-universal.zip
+            dist/SHA256SUMS.txt
+            dist/screenshot-overview.png
+            assets/app.png
+          retention-days: 30

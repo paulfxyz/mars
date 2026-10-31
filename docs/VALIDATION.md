@@ -1,0 +1,25 @@
+# Mars 0.1.0 validation
+
+This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
+
+## Automated gates
+
+The macOS CI workflow must pass all unit tests, including parsing detections with colon/Unicode paths, warnings and incomplete results, cancellation, pre-cancelled operations, direct argument construction, local storage, corrupt-data fallback, shared-operation locking, configuration generation, daily/weekly launchd dictionaries, and harmless custom-signature ClamAV detection and no-detection fixtures.
+
+Packaging must build both arm64 and x86_64 executables for GUI and helper, verify the universal binaries, pass `codesign --verify --deep --strict`, produce a ZIP plus checksum, and capture an actual native interface in demo mode. Demo data is clearly labeled.
+
+## Not yet established by automation
+
+- Homebrew's interactive first-install flow on a fresh personal Mac.
+- User approval of an unnotarized download under local or managed Gatekeeper policy.
+- Full Disk Access for both GUI and LaunchAgent helper on each supported macOS release.
+- A complete user-approved startup-disk scan with a review of skipped/unreadable files.
+- A real scheduled run while the GUI is quit, followed by sleep/wake and login behavior.
+- Real-world malware detection performance, false-positive rate, or resistance to hostile input.
+- Native Intel execution; a universal Intel slice is built and checked but not executed by an Apple-silicon runner.
+
+## Hands-on acceptance checklist
+
+Install the downloaded app in Applications, approve opening through normal macOS controls, install the engine, download definitions, run a small known folder, cancel another scan, and inspect the report. Then grant intended access and run a broader scan, reviewing warnings rather than just the headline.
+
+Save a near-future schedule, quit the GUI, remain logged in and awake, and verify a new scheduled report appears. Repeat across sleep/wake and after replacing the app. Confirm permissions for the helper rather than inferring them from the GUI.
