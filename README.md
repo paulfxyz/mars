@@ -44,6 +44,10 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 
 The screenshot is captured from the running native app in `--demo` mode. Its report and file count are synthetic, not evidence of a scan of someone's Mac. The guardian illustration is AI-generated original artwork, not a screenshot, an official ClamAV mascot, or an affiliation claim.
 
+<img src="docs/screenshot-scan.png" width="100%" alt="Mars scan screen with Entire Mac, Home folder, and Selected folders, plus pre-scan definition updates and a non-destructive scan action">
+
+Explore [all seven native interface captures](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
+
 ## Quiet defense, clear boundaries
 
 ```text

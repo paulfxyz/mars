@@ -2,6 +2,14 @@
 
 This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
 
+## Verified build
+
+The [native macOS run on October 31, 2026](https://github.com/paulfxyz/mars/actions/runs/41188889071) passed **17 tests with zero failures**, including the real ClamAV custom-signature fixture. The tested app-source commit is `3cb0f8c`; subsequent repository documentation and image additions do not change the app source in this release.
+
+The run built both arm64 and x86_64, combined and checked the architectures of both executables, verified the ad-hoc bundle signature, and produced the release ZIP. Its downloaded ZIP passed a second SHA-256 check outside the CI runner.
+
+Seven actual native captures were visually reviewed: overview, scan, schedule, history, settings, dark overview, and compact overview. They are available in [the screenshot gallery](SCREENSHOTS.md) and use explicitly labeled synthetic data. The overview fits the default window, the compact view remains scrollable, and longer schedule/settings screens scroll normally.
+
 ## Automated gates
 
 The macOS CI workflow must pass all unit tests, including parsing detections with colon/Unicode paths, warnings and incomplete results, cancellation, pre-cancelled operations, direct argument construction, local storage, corrupt-data fallback, shared-operation locking, configuration generation, daily/weekly launchd dictionaries, and harmless custom-signature ClamAV detection and no-detection fixtures.
