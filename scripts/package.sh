@@ -37,8 +37,8 @@ iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP/Contents/MacOS/mars-scan"
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
-lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/mars"
-lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/mars-scan"
+lipo "$APP/Contents/MacOS/mars" -verify_arch arm64 x86_64
+lipo "$APP/Contents/MacOS/mars-scan" -verify_arch arm64 x86_64
 ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Mars-${VERSION}-macOS-universal.zip"
 (cd dist && shasum -a 256 "Mars-${VERSION}-macOS-universal.zip" > SHA256SUMS.txt)
 echo "Packaged Mars $VERSION (Apple silicon + Intel, macOS 13+). Ad-hoc signed, not notarized."

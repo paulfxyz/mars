@@ -128,7 +128,11 @@ struct OverviewView: View {
                 RoundedRectangle(cornerRadius: 19).fill(Color(red: 0.96, green: 0.93, blue: 0.87))
                 if let url = Bundle.main.url(forResource: "mars-guardian", withExtension: "png"), let image = NSImage(contentsOf: url) {
                     GeometryReader { geo in
-                        Image(nsImage: image).resizable().scaledToFill().frame(width: geo.size.width, height: geo.size.height).clipped()
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            Image(nsImage: image).resizable().scaledToFit()
+                                .frame(width: geo.size.height * 1.777, height: geo.size.height)
+                        }.frame(width: geo.size.width, height: geo.size.height).clipped()
                     }.clipShape(RoundedRectangle(cornerRadius: 19))
                 }
                 LinearGradient(colors: [Color(red: 0.97, green: 0.95, blue: 0.90), Color(red: 0.97, green: 0.95, blue: 0.90).opacity(0.90), .clear], startPoint: .leading, endPoint: .trailing)
@@ -145,7 +149,7 @@ struct OverviewView: View {
             HStack(spacing: 14) {
                 statusCard(icon: "cpu", title: "CLAMAV ENGINE", value: model.installed ? "Ready to serve" : "Not installed", detail: model.installed ? "Runs locally on your Mac" : "One guided setup", good: model.installed)
                 statusCard(icon: "arrow.triangle.2.circlepath", title: "DEFINITIONS", value: model.hasDefinitions ? (model.definitionsStale ? "Update recommended" : "Downloaded") : "Awaiting setup", detail: model.freshness, good: model.hasDefinitions && !model.definitionsStale)
-                statusCard(icon: "calendar", title: "NEXT ROUTINE", value: model.preferences.scheduleEnabled ? "On the calendar" : "Your call", detail: model.scheduleSummary, good: model.preferences.scheduleEnabled)
+                statusCard(icon: "calendar", title: "NEXT ROUTINE", value: model.savedPreferences.scheduleEnabled ? "On the calendar" : "Your call", detail: model.scheduleSummary, good: model.savedPreferences.scheduleEnabled)
             }
             HStack {
                 Text("Your next move").font(.system(size: 21, weight: .medium, design: .serif))
@@ -283,6 +287,11 @@ struct ScheduleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 23) {
             SectionHeading(eyebrow: "A steady routine", title: "Set it. Stay in command.", subtitle: "Daily or weekly scans, run by macOS even when the Mars window is closed.")
+            HStack {
+                Label(model.scheduleSummary, systemImage: "calendar.badge.clock")
+                Spacer()
+                if model.preferences != model.savedPreferences { Text("Unsaved changes").foregroundStyle(Palette.red) }
+            }.font(.system(size: 11)).foregroundStyle(.secondary)
             Card {
                 VStack(alignment: .leading, spacing: 20) {
                     Toggle("Enable scheduled scans", isOn: $model.preferences.scheduleEnabled).font(.system(size: 15, weight: .semibold))

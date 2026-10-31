@@ -151,7 +151,9 @@ public struct Engine {
             record.scannedFiles = parser.scannedFiles
             record.warnings = parser.warnings
             record.outcome = parser.outcome(exitCode: code, cancelled: cancellation.isCancelled)
-            record.note = "Only accessible files within ClamAV's engine limits were scanned. No files were changed."
+            record.note = parser.scannedFiles == 0
+                ? "No files were inspected. The location may be empty, inaccessible, or excluded. No files were changed."
+                : "Only accessible files within ClamAV's engine limits were scanned. No files were changed."
         } catch {
             record.outcome = cancellation.isCancelled ? .cancelled : .failed
             record.note = error.localizedDescription

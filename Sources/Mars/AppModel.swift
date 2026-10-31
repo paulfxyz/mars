@@ -7,6 +7,7 @@ import MarsCore
 final class AppModel: ObservableObject {
     @Published var page: Page = .overview
     @Published var preferences = Preferences()
+    @Published var savedPreferences = Preferences()
     @Published var history: [ScanRecord] = []
     @Published var installed = Engine.installed
     @Published var definitionsDate: Date?
@@ -39,6 +40,7 @@ final class AppModel: ObservableObject {
 
     init() {
         preferences = storage.preferences()
+        savedPreferences = preferences
         refresh()
         if demo {
             installed = true; hasDefinitions = true; definitionsDate = Date()
@@ -65,6 +67,7 @@ final class AppModel: ObservableObject {
         hasDefinitions = storage.hasDefinitions
         definitionsDate = storage.definitionsDate
         history = storage.history()
+        savedPreferences = storage.preferences()
     }
     var ready: Bool { installed && hasDefinitions }
     var latest: ScanRecord? { history.first }
@@ -74,10 +77,10 @@ final class AppModel: ObservableObject {
         return definitionsDate.formatted(.relative(presentation: .named))
     }
     var scheduleSummary: String {
-        guard preferences.scheduleEnabled else { return "Not scheduled" }
+        guard savedPreferences.scheduleEnabled else { return "Not scheduled" }
         let days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        let day = preferences.weekly ? days[min(6, max(0, preferences.weekday))] : "Every day"
-        return "\(day) at \(String(format: "%02d:%02d", preferences.hour, preferences.minute))"
+        let day = savedPreferences.weekly ? days[min(6, max(0, savedPreferences.weekday))] : "Every day"
+        return "\(day) at \(String(format: "%02d:%02d", savedPreferences.hour, savedPreferences.minute))"
     }
     func run(_ title: String, work: @escaping (Cancellation, @escaping (String) -> Void) throws -> ScanRecord?) {
         guard !busy else { return }
@@ -151,6 +154,7 @@ final class AppModel: ObservableObject {
             if preferences.scheduleEnabled { _ = try Engine.targets(for: preferences) }
             try storage.save(preferences)
             try Scheduler.apply(preferences: preferences, helper: helper, storage: storage)
+            savedPreferences = preferences
             activity = [preferences.scheduleEnabled ? "Schedule saved. \(scheduleSummary)." : "Scheduled scans disabled."]
         } catch {
             try? storage.save(old)
@@ -165,7 +169,7 @@ final class AppModel: ObservableObject {
         saved.scope = preferences.scope
         saved.folders = preferences.folders
         saved.updateBeforeScan = preferences.updateBeforeScan
-        do { try storage.save(saved) } catch { self.error = error.localizedDescription }
+        do { try storage.save(saved); savedPreferences = saved } catch { self.error = error.localizedDescription }
     }
     func export(_ record: ScanRecord) {
         let panel = NSSavePanel()
