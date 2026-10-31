@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a tested community preview to GitHub Releases
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -49,3 +54,34 @@ jobs:
             dist/screenshot-*.png
             assets/app.png
           retention-days: 30
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: Mars-macOS-universal
+          path: release-assets
+      - name: Publish immutable preview assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.1.0
+          if gh release view "$TAG" --json isDraft > /tmp/mars-release.json 2>/dev/null; then
+            if [ "$(jq -r .isDraft /tmp/mars-release.json)" != true ]; then
+              echo "::error::Published version already exists. Never replace published release assets."
+              exit 1
+            fi
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Mars 0.1.0 · Community preview" --draft --prerelease --notes-file docs/RELEASE-0.1.0.md
+          fi
+          gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file docs/RELEASE-0.1.0.md
+          (cd release-assets/dist && sha256sum -c SHA256SUMS.txt)
+          gh release upload "$TAG" release-assets/dist/Mars-0.1.0-macOS-universal.zip release-assets/dist/SHA256SUMS.txt
+          gh release edit "$TAG" --draft=false --prerelease
