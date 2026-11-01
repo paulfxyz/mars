@@ -24,15 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return view.subviews.contains(where: containsReport)
     }
     private func capture(output: String, report: Bool, remainingAttempts: Int) {
-        let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil }
+        let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil && $0.frame.width >= 600 && $0.frame.height >= 400 }
         let reportWindow = visible.first { $0.contentView.map(containsReport) == true }
-        if report && reportWindow == nil {
+        if visible.isEmpty || (report && reportWindow == nil) {
             if remainingAttempts > 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.capture(output: output, report: true, remainingAttempts: remainingAttempts - 1) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.capture(output: output, report: report, remainingAttempts: remainingAttempts - 1) }
                 return
             }
             for window in visible { fputs("Visible window: \(window.title), sheet=\(window.isSheet), frame=\(window.frame)\n", stderr) }
-            fputs("Actual report content was not rendered; refusing a misleading results screenshot.\n", stderr)
+            fputs("Requested app content was not rendered; refusing a misleading screenshot.\n", stderr)
             exit(6)
         }
         guard let window = report ? reportWindow : visible.first,

@@ -33,7 +33,9 @@ jobs:
         run: |
           capture() {
             NAME="$1"; shift
-            dist/Mars.app/Contents/MacOS/mars --demo --screenshot "$PWD/dist/screenshot-$NAME.png" "$@" &
+            # LaunchServices sends the normal open-application event. Directly
+            # executing the binary can leave SwiftUI's WindowGroup unopened.
+            open -n -W dist/Mars.app --args --demo --screenshot "$PWD/dist/screenshot-$NAME.png" "$@" &
             PID=$!
             for ATTEMPT in {1..30}; do
               if ! kill -0 "$PID" 2>/dev/null; then break; fi
