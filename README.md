@@ -3,7 +3,7 @@
   <h1>Mars</h1>
   <p>Your Mac. Two local engines. One calm place to scan.</p>
   <p>
-    <a href="https://github.com/paulfxyz/mars/releases"><img src="https://img.shields.io/github/v/release/paulfxyz/mars?include_prereleases&style=flat-square&color=bf3829" alt="Latest preview"></a>
+    <a href="https://github.com/paulfxyz/mars/releases/tag/v1.1.1"><img src="https://img.shields.io/badge/release-v1.1.1-bf3829?style=flat-square" alt="Mars v1.1.1 release"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-bf3829?style=flat-square" alt="MIT license"></a>
     <img src="https://img.shields.io/badge/macOS-13%2B-24332e?style=flat-square&logo=apple&logoColor=white" alt="macOS 13 and later">
     <img src="https://img.shields.io/badge/native-SwiftUI-bf3829?style=flat-square&logo=swift&logoColor=white" alt="Native SwiftUI">

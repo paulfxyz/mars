@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION=1.1.1
+bash scripts/check-version.sh
 APP="$PWD/dist/Mars.app"
 mkdir -p dist
 for ARCH in arm64 x86_64; do
