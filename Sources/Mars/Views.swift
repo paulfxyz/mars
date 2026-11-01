@@ -54,7 +54,7 @@ struct RootView: View {
         .alert("Install optional component?", isPresented: Binding(get: { model.optionalPackage != nil }, set: { if !$0 { model.optionalPackage = nil } })) {
             Button("Install with Homebrew") { if let package = model.optionalPackage { model.installOptionalConfirmed(package) } }
             Button("Cancel", role: .cancel) { model.optionalPackage = nil }
-        } message: { Text("Mars will run brew install \(model.optionalPackage ?? ""). Homebrew may build from source on older or Intel Macs. You can still use ClamAV if this component is unavailable.") }
+        } message: { Text("Mars will install \(model.optionalPackage == "gnupg" ? "GnuPG and a current rsync for signed-feed verification" : "YARA-X") with Homebrew. Older or Intel Macs may require source builds. You can still use ClamAV if an optional component is unavailable.") }
     }
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {

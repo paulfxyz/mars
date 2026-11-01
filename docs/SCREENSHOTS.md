@@ -14,6 +14,24 @@ Choose the startup disk, home, or selected folders. Pre-scan definition updates 
 
 <img src="screenshot-scan.png" width="100%" alt="Mars native manual scan controls">
 
+## Detection sources
+
+ClamAV remains the baseline, with optional YARA-X inclusion and source-by-source consent, validation, freshness, license, and rollback controls. The source list is a normal scrollable native screen.
+
+<img src="screenshot-sources.png" width="100%" alt="Mars native two-engine and detection source controls">
+
+## During a scan
+
+Plain-language stages, honest counters, elapsed time, safe stopping, and an expandable read-only terminal stay together. Synthetic progress does not imply that a real machine was scanned.
+
+<img src="screenshot-scanning.png" width="100%" alt="Mars native scan progress with understandable explanations and engine console">
+
+## Understanding the result
+
+The report explains what a match means, identifies its engine/source, lists coverage gaps and suggested next steps, and offers safe actions. The example is a deliberately synthetic rule match, not a malware sample.
+
+<img src="screenshot-results.png" width="100%" alt="Mars native results sheet with interpretation, source attribution, and safe actions">
+
 ## Scheduled routines
 
 Daily and weekly choices are saved explicitly to a per-user macOS LaunchAgent. This is a normal scrollable window; further controls are below the captured viewport.

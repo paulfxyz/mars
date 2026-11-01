@@ -19,7 +19,7 @@ public final class Cancellation {
 public enum ProcessRunner {
     @discardableResult
     public static func run(_ executable: String, _ arguments: [String], cancellation: Cancellation = Cancellation(),
-                           log: URL? = nil, line: (String) -> Void = { _ in }) throws -> Int32 {
+                           timeout: TimeInterval? = nil, log: URL? = nil, line: (String) -> Void = { _ in }) throws -> Int32 {
         if cancellation.isCancelled { throw MarsError.message("Operation cancelled.") }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
@@ -41,6 +41,13 @@ public enum ProcessRunner {
         defer { try? output?.close() }
         try process.run()
         cancellation.attach(process)
+        var deadline: DispatchWorkItem?
+        if let timeout {
+            let work = DispatchWorkItem { if process.isRunning { process.terminate() } }
+            deadline = work
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout, execute: work)
+        }
+        defer { deadline?.cancel() }
         var pending = Data()
         while true {
             let chunk = pipe.fileHandleForReading.availableData
@@ -96,7 +103,8 @@ public struct Engine {
         guard ["yara-x", "gnupg"].contains(package), let brew = Self.brew else { throw MarsError.message("Homebrew is required for this optional component.") }
         let operationLock = try OperationLock(storage: storage)
         defer { withExtendedLifetime(operationLock) {} }
-        let code = try ProcessRunner.run(brew, ["install", package], cancellation: cancellation, line: line)
+        let packages = package == "gnupg" ? ["gnupg", "rsync"] : [package]
+        let code = try ProcessRunner.run(brew, ["install"] + packages, cancellation: cancellation, line: line)
         guard code == 0 else { throw MarsError.message("Optional component installation did not finish. Check the console. On older macOS or Intel, Homebrew may need to build from source or may not support the current formula.") }
     }
     private func updateUnlocked(cancellation: Cancellation, line: (String) -> Void) throws {

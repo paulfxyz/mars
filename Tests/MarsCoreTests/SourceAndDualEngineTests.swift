@@ -190,4 +190,11 @@ final class SourceAndDualEngineTests: XCTestCase {
         XCTAssertTrue(source.revision?.contains("signed payload dates") == true)
         XCTAssertTrue(FileManager.default.fileExists(atPath: storage.activeSource("sanesecurity").appendingPathComponent("rogue.hdb").path))
     }
+    func testTransportDeadlineDoesNotPretendUserCancelled() throws {
+        let token = Cancellation(), start = Date()
+        let code = try ProcessRunner.run("/bin/sleep", ["20"], cancellation: token, timeout: 0.2)
+        XCTAssertNotEqual(code, 0)
+        XCTAssertFalse(token.isCancelled)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 5)
+    }
 }

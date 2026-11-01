@@ -51,6 +51,14 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 
 <img src="docs/screenshot-scan.png" width="100%" alt="Mars scan screen with Entire Mac, Home folder, and Selected folders, plus pre-scan definition updates and a non-destructive scan action">
 
+<img src="docs/screenshot-scanning.png" width="100%" alt="Mars 1.0.0 during a scan: plain-language stage information, real counters, elapsed time, safe stopping, and engine console">
+
+<details>
+<summary>See how Mars explains a result</summary>
+<p>This is an explicitly synthetic example, not a real detection on a user's Mac.</p>
+<img src="docs/screenshot-results.png" width="100%" alt="Mars results with plain-language interpretation, exact source provenance, and safe next steps">
+</details>
+
 Explore the [native screenshot gallery](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
 
 ## Detection sources, not a mystery bundle

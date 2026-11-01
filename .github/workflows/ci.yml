@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install test engine
-        run: brew install clamav yara-x gnupg
+        run: brew install clamav yara-x gnupg rsync
       - name: Unit and real-engine fixture tests
         env:
           MARS_CLAMAV_TESTS: "1"
