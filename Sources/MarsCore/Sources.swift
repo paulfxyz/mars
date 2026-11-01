@@ -84,9 +84,79 @@ extension Storage {
     }
 }
 
+public struct SourceRefreshIssue: Identifiable {
+    public var id: String
+    public var name: String
+    public var message: String
+    public var description: String { "\(name): \(message)" }
+}
+
 public struct SourceManager {
     public var storage: Storage
     public init(storage: Storage = Storage()) { self.storage = storage }
+    public func subscriptionURLs() throws -> [URL] {
+        guard FileManager.default.fileExists(atPath: storage.privateFeeds().path) else {
+            throw MarsError.message("No SecuriteInfo subscription URLs are configured. In Detection Sources, configure your own private feed URLs, update and validate the source, then enable it. ClamAV does not require this subscription.")
+        }
+        let text: String
+        do { text = try String(contentsOf: storage.privateFeeds()) }
+        catch { throw MarsError.message("The SecuriteInfo configuration cannot be read. Save your private feed URLs again in Detection Sources, or turn this optional source off.") }
+        return try Self.validateFeedURLs(text)
+    }
+    public func setupIssue(for source: DetectionSource, requireActive: Bool) -> String? {
+        if !source.acceptedTerms { return "Review and accept this provider's terms first. Acceptance does not enable the source." }
+        // Configuration is checked before any private-file read, download, or engine work.
+        if source.kind == .securiteinfo {
+            do { _ = try subscriptionURLs() } catch { return error.localizedDescription }
+        }
+        if source.engine == .yaraX && !Engine.yaraXInstalled { return "Install YARA-X in Detection Sources before using this rule source." }
+        if source.engine == .clamav && !Engine.installed { return "Install ClamAV before using this definition source." }
+        if source.kind == .sanesecurity && !requireActive && Engine.executable("gpg") == nil {
+            return "Install verification tools in Detection Sources before updating Sanesecurity."
+        }
+        if requireActive && (source.updated == nil || !FileManager.default.fileExists(atPath: storage.activeSource(source.id).path)) {
+            return "Update & validate this source before enabling it. No validated active definitions are available."
+        }
+        return nil
+    }
+    public func acceptTerms(id: String) throws {
+        let operationLock = try OperationLock(storage: storage)
+        defer { withExtendedLifetime(operationLock) {} }
+        var sources = storage.sources()
+        guard let index = sources.firstIndex(where: { $0.id == id }) else { throw MarsError.message("Unknown source.") }
+        sources[index].acceptedTerms = true
+        // Consent and activation are different actions. In particular, a paid account is not
+        // created merely by accepting its terms.
+        sources[index].enabled = false
+        try storage.saveSources(sources)
+    }
+    public func setEnabled(id: String, enabled: Bool) throws {
+        let operationLock = try OperationLock(storage: storage)
+        defer { withExtendedLifetime(operationLock) {} }
+        var sources = storage.sources()
+        guard let index = sources.firstIndex(where: { $0.id == id }) else { throw MarsError.message("Unknown source.") }
+        if enabled, let issue = setupIssue(for: sources[index], requireActive: true) { throw MarsError.message(issue) }
+        sources[index].enabled = enabled
+        try storage.saveSources(sources)
+    }
+    /// Called while the caller holds the operation lock. One optional failure must not abort
+    /// other sources or the baseline scan; cancellation, unlike a source failure, propagates.
+    public func refreshOptionalUnlocked(_ requested: [DetectionSource], cancellation: Cancellation,
+                                       line: (String) -> Void) throws -> [SourceRefreshIssue] {
+        var issues: [SourceRefreshIssue] = []
+        for source in requested where source.kind != .local {
+            if cancellation.isCancelled { throw MarsError.message("Operation cancelled.") }
+            do { try updateUnlocked(id: source.id, cancellation: cancellation, line: line) }
+            catch {
+                if cancellation.isCancelled { throw error }
+                let issue = SourceRefreshIssue(id: source.id, name: source.name, message: error.localizedDescription)
+                issues.append(issue)
+                line("OPTIONAL SOURCE SKIPPED: \(issue.description)")
+                line("The official ClamAV baseline remains available; this source will not be used in this scan.")
+            }
+        }
+        return issues
+    }
     public static func validateFeedURLs(_ text: String) throws -> [URL] {
         let lines = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         guard !lines.isEmpty, lines.count <= 20 else { throw MarsError.message("Enter 1–20 signature download URLs from your own SecuriteInfo account.") }
@@ -204,7 +274,11 @@ public struct SourceManager {
         var sources = storage.sources()
         guard let index = sources.firstIndex(where: { $0.id == id }) else { throw MarsError.message("Unknown detection source.") }
         var source = sources[index]
-        guard source.acceptedTerms else { throw MarsError.message("Review and accept this source's separate terms first.") }
+        if let issue = setupIssue(for: source, requireActive: false) {
+            sources[index].lastError = issue
+            try storage.saveSources(sources)
+            throw MarsError.message(issue)
+        }
         guard source.kind != .local else { line("\(source.name): local import; no automatic updater."); return }
         let stage = try staging(source)
         defer { try? FileManager.default.removeItem(at: stage) }
@@ -226,8 +300,7 @@ public struct SourceManager {
                 let dates = try downloadSanesecurity(stage: stage, cancellation: cancellation, line: line)
                 source.files = 4; source.revision = "GPG verified; signed payload dates: \(dates.joined(separator: " · ")). Download time does not establish freshness."
             case .securiteinfo:
-                let raw = try String(contentsOf: storage.privateFeeds())
-                let urls = try Self.validateFeedURLs(raw)
+                let urls = try subscriptionURLs()
                 for (offset, url) in urls.enumerated() {
                     let ext = url.pathExtension.lowercased()
                     guard ["ndb", "ldb", "hdb", "hsb", "cvd", "cld", "ign2", "fp", "sfp"].contains(ext) else { throw MarsError.message("Unsupported subscription database format.") }

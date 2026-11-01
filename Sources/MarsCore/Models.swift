@@ -65,6 +65,15 @@ public struct ScanRecord: Codable, Identifiable {
     public var note = ""
     public var passes: [ScanPass]?
     public var coverageNotes: [String]?
+    public var baselineFinished: Bool {
+        passes?.contains { $0.engine == "ClamAV" && $0.source == "Official ClamAV" && ["completed", "threatsFound"].contains($0.status) } == true
+    }
+    public var displayTitle: String {
+        if outcome == .incomplete && baselineFinished && passes?.contains(where: { $0.status == "notRun" }) == true {
+            return "Baseline finished; optional checks skipped"
+        }
+        return outcome.title
+    }
     public init(scope: ScanScope, targets: [String]) { self.scope = scope; self.targets = targets }
 }
 
@@ -131,7 +140,11 @@ public enum Interpretation {
         switch record.outcome {
         case .completed: return "The selected checks finished without reporting a match. This is reassuring, but it does not prove every file is safe."
         case .threatsFound: return "One or more signatures or rules matched. A match can indicate malware, a suspicious pattern, or a false positive. Do not open a flagged file while you investigate."
-        case .incomplete: return "Mars could not finish checking everything requested. Missing permissions, unreadable files, or engine limits can leave gaps; an empty finding list is not a clean bill of health."
+        case .incomplete:
+            if record.baselineFinished {
+                return "ClamAV finished its baseline check, but not all requested optional checks completed. Review the skipped sources and coverage notes below. This is not a failure to start, and it is not a guarantee that all files are safe."
+            }
+            return "Mars could not finish checking everything requested. Missing permissions, unreadable files, or engine limits can leave gaps; an empty finding list is not a clean bill of health."
         case .failed: return "The scan could not complete. Read the explanation and engine console, fix the setup or update problem, then try a small folder again."
         case .cancelled: return "You stopped this scan. Any findings already recorded are still worth reviewing, but the remaining files were not checked."
         }

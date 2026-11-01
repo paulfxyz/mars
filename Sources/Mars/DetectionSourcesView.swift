@@ -15,7 +15,7 @@ struct DetectionSourcesView: View {
                         Text("Baseline engine · official definitions").font(.system(size: 11)).foregroundStyle(.secondary)
                         Text(model.installed ? "Installed" : "Setup required").font(.system(size: 13, weight: .medium))
                         Button(model.installed ? "Update all enabled sources" : "Install ClamAV…") {
-                            if model.installed { model.updateDefinitions() } else { model.install() }
+                            if model.installed { model.updateDefinitions(allSources: true) } else { model.install() }
                         }.disabled(model.busy)
                     }
                 }
@@ -31,6 +31,14 @@ struct DetectionSourcesView: View {
                         } else {
                             Text("Installed · enable at least one YARA-X source below").font(.system(size: 10)).foregroundStyle(.secondary)
                         }
+                    }
+                }
+            }
+            if !model.optionalUpdateWarnings.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Official definitions updated; some optional sources were skipped", systemImage: "info.circle").font(.system(size: 13, weight: .semibold))
+                        ForEach(model.optionalUpdateWarnings, id: \.self) { Text($0).font(.system(size: 11)).foregroundStyle(.secondary) }
                     }
                 }
             }
@@ -54,11 +62,15 @@ struct DetectionSourcesView: View {
                             }
                             Spacer()
                             Toggle("Enabled", isOn: Binding(get: { source.enabled }, set: { _ in model.enableSource(source) }))
-                                .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(model.busy)
+                                .labelsHidden().toggleStyle(.switch).controlSize(.small)
+                                .disabled(model.busy || (!source.enabled && model.sourceSetupIssue(source) != nil))
                                 .accessibilityLabel("Enable \(source.name)")
                         }
                         Text(source.explanation).font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(4)
                         Text(source.license).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                        if let setup = model.sourceSetupIssue(source) {
+                            Label(setup, systemImage: "info.circle").font(.system(size: 11)).foregroundStyle(.secondary)
+                        }
                         HStack {
                             Text(source.updated.map { "Last successful update: \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Not yet downloaded or configured")
                             Spacer()
@@ -67,8 +79,10 @@ struct DetectionSourcesView: View {
                         if let revision = source.revision { Text(revision).font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary).textSelection(.enabled) }
                         if let error = source.lastError { Label(error, systemImage: "exclamationmark.triangle").font(.system(size: 11)).foregroundStyle(Palette.red) }
                         HStack {
+                            if !source.acceptedTerms { Button("Review & accept terms…") { model.sourceConsent = source }.disabled(model.busy) }
                             if source.kind != .local {
-                                Button("Update & validate") { model.updateSource(source) }.disabled(!source.acceptedTerms || model.busy)
+                                Button("Update & validate") { model.updateSource(source) }
+                                    .disabled(model.busy || model.sourceSetupIssue(source, requireActive: false) != nil)
                             }
                             if source.kind == .securiteinfo { Button("Configure private feed URLs…") { model.showPrivateFeedSetup = true }.disabled(model.busy) }
                             if source.kind == .sanesecurity { Button("Install verification tools…") { model.optionalPackage = "gnupg" }.disabled(model.busy) }
@@ -96,11 +110,13 @@ struct SourceConsentView: View {
     @Environment(\.dismiss) var dismiss
     var body: some View {
         VStack(alignment: .leading, spacing: 19) {
-            Text("Enable \(source.name)?").font(.system(size: 25, weight: .medium, design: .serif))
+            Text("Review \(source.name)").font(.system(size: 25, weight: .medium, design: .serif))
             Text(source.explanation).font(.system(size: 13)).lineSpacing(5)
             Text("License: \(source.license)").font(.system(size: 12, weight: .medium))
             Text("These are not Mars-owned MIT definitions. Review the provider's current terms and confirm you have the rights to use them. A successful signature check or compilation establishes authenticity/format, not detection accuracy. Unofficial sources may produce false positives.")
                 .font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(5)
+            Text("Accepting terms does not enable this source. Complete any configuration, update and validate its files, then switch it on.")
+                .font(.system(size: 12, weight: .medium))
             if source.kind == .elastic {
                 Text("This source downloads only the four files pinned in this release; it does not automatically track upstream main. A reviewed Mars update is needed to advance the pinned revision.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -109,7 +125,7 @@ struct SourceConsentView: View {
                 Button("Read provider terms") { model.open(source.kind == .elastic ? "https://github.com/elastic/protections-artifacts/blob/main/LICENSE.txt" : source.origin) }
                 Spacer()
                 Button("Cancel") { dismiss() }
-                PrimaryButton(title: "I accept · enable", icon: "checkmark") { model.acceptSource(source); dismiss() }
+                PrimaryButton(title: "Accept terms", icon: "checkmark") { model.acceptSource(source); dismiss() }
             }
         }.padding(30).frame(width: 620).background(Palette.background)
     }

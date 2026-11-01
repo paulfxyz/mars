@@ -84,7 +84,7 @@ struct RootView: View {
             VStack(alignment: .leading, spacing: 11) {
                 Image(systemName: "sparkle").foregroundStyle(Color(red: 0.94, green: 0.57, blue: 0.43))
                 Text("Two local engines.\nOne calm place to scan.").font(.system(size: 12)).lineSpacing(5).foregroundStyle(.white.opacity(0.6))
-                Text("OPEN SOURCE · v1.0.0").font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
+                Text("OPEN SOURCE · v\(AppVersion.current)").font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
             }.padding(12).padding(.bottom, 22)
         }.padding(.horizontal, 18).frame(width: 208).background(Palette.ink).foregroundStyle(.white)
     }
@@ -167,7 +167,7 @@ struct OverviewView: View {
                 HStack(spacing: 18) {
                     Image(systemName: model.latest == nil ? "viewfinder" : "checkmark.shield").font(.system(size: 28)).foregroundStyle(Palette.red)
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(model.latest?.outcome.title ?? "Every good defense starts with a scan.").font(.system(size: 15, weight: .semibold))
+                        Text(model.latest?.displayTitle ?? "Every good defense starts with a scan.").font(.system(size: 15, weight: .semibold))
                         if let latest = model.latest {
                             Text("\(latest.scannedFiles.formatted()) files · \(latest.started.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.system(size: 12)).foregroundStyle(.secondary)
@@ -374,7 +374,7 @@ struct HistoryView: View {
                                 Image(systemName: record.outcome == .completed ? "checkmark.shield" : "exclamationmark.shield")
                                     .font(.system(size: 25)).foregroundStyle(record.outcome == .completed ? Palette.green : Palette.red)
                                 VStack(alignment: .leading, spacing: 7) {
-                                    Text(record.outcome.title).font(.system(size: 14, weight: .semibold))
+                                    Text(record.displayTitle).font(.system(size: 14, weight: .semibold))
                                     Text("\(record.scope.title) · \(record.scannedFiles.formatted()) files · \(record.scheduled ? "Scheduled" : "Manual")")
                                         .font(.system(size: 11)).foregroundStyle(.secondary)
                                 }
@@ -398,6 +398,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 23) {
             SectionHeading(eyebrow: "Behind the shield", title: "Simple, not mysterious.", subtitle: "Your engine, definitions, and permissions. No hidden services. No account.")
+            AppUpdatesView()
             Card {
                 VStack(alignment: .leading, spacing: 17) {
                     Label("ClamAV engine", systemImage: "cpu").font(.system(size: 15, weight: .semibold))
@@ -407,11 +408,21 @@ struct SettingsView: View {
                         Button(model.installed ? "Refresh engine status" : "Install ClamAV…") {
                             if model.installed { model.refresh() } else { model.install() }
                         }
-                        if model.installed { Button("Update definitions") { model.updateDefinitions() } }
+                        if model.installed { Button("Update official definitions") { model.updateDefinitions() } }
                     }.disabled(model.busy)
                     Text("Definition database: \(model.freshness)").font(.system(size: 11)).foregroundStyle(.secondary)
                     Text("To upgrade the engine itself, use brew upgrade clamav in Terminal. Mars does not run a system-wide ClamAV daemon.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+            if !model.activeSourceSetupIssues.isEmpty {
+                Card {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("An optional source needs setup", systemImage: "info.circle").font(.system(size: 14, weight: .semibold))
+                        Text("This does not block official ClamAV definition updates. Scans will run the baseline and report any skipped optional checks.")
+                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                        Button("Review detection sources") { model.page = .sources }
+                    }
                 }
             }
             Card {
@@ -436,7 +447,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            Text("Mars 1.0.0 · MIT app; third-party rules have separate licenses\nIndependent from Apple and the engine providers. No real-time protection, automatic removal, or guarantee of detection.")
+            Text("Mars \(AppVersion.current) · MIT app; third-party rules have separate licenses\nIndependent from Apple and the engine providers. No real-time protection, automatic removal, or guarantee of detection.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(5)
         }
     }

@@ -21,12 +21,12 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 
 ## Install and get started
 
-1. Download **Mars-1.0.0-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
+1. Download **Mars-1.1.0-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
 2. Extract it, move **Mars.app** to Applications, then open it.
 3. Choose **Set up Mars**. Confirm installation of ClamAV through Homebrew; Mars then downloads the official definitions. If Homebrew is missing, Mars offers to open its official installer in a visible Terminal window first.
 4. Choose **Scan**, select a location, and scan. For wider coverage, grant Full Disk Access in macOS Settings.
 5. Optionally save a daily or weekly schedule. Reports from both manual and background scans appear in History.
-6. In **Detection Sources**, optionally install YARA-X, enable its scan switch, review source terms, enable a rule source, and **Update & validate** it. More rules are not automatically better detection.
+6. In **Detection Sources**, optionally install YARA-X, enable its scan switch, review source terms, configure any required account, **Update & validate** the rule source, then enable it. Accepting terms alone never enables a source.
 
 **Ad-hoc signed, not Developer ID signed or notarized.** The app supports Apple silicon and Intel Macs on macOS 13 or later; optional Homebrew components have their own compatibility requirements. Version 1.0.0 is not a claim of an external security audit. macOS may require explicit approval in Privacy & Security; do not disable Gatekeeper or management policies.
 
@@ -44,6 +44,9 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 - **Selectable sources:** Official ClamAV, a pinned four-file Elastic Mac starter pack, GPG-verified Sanesecurity malware hashes, user-owned SecuriteInfo feeds, and trusted local imports for both engines.
 - **Understandable scanning:** Plain-language stages, observed counts, elapsed time, safe stopping, and an expandable dark read-only terminal.
 - **Results that help:** Explanations, coverage gaps, source-by-source status, recommended next steps, Finder reveal, copy path, report export, and explicit preparation of a new scan.
+- **App updates inside Mars:** Manual stable-release checks and SHA-256 verified ZIP downloads, with preserved macOS quarantine metadata. Installation remains an explicit Finder replacement, not a silent app swap or restart.
+
+Version 1.1.0 fixes a 1.0.0 regression where enabling SecuriteInfo without configuring a subscription blocked both scanning and Settings updates. Existing profiles are preserved: official ClamAV scanning continues and unavailable optional checks are reported as skipped, not silently treated as clean.
 
 <img src="docs/screenshot-overview.png" width="100%" alt="Mars native overview with illustrative scan history, engine status, definition freshness, and the manga guardian">
 
@@ -101,14 +104,14 @@ Mars serializes scans, installations, and definition updates with a shared proce
 - **Entire Mac can be slow:** It scans `/`, including accessible system and user paths. macOS mount aliases may cause duplicate inspection, so file counts are engine-reported, not unique-file counts. External volumes and runtime mounts are excluded.
 - **Freshness is a signal:** Definition age uses the local `daily.cvd` or `daily.cld` modification time, not a cryptographic assessment of current upstream freshness. Older than 48 hours is flagged. A failed pre-scan update stops the scan.
 - **No always-on engine:** No kernel extension, Endpoint Security agent, `clamd` daemon, network filter, or on-access monitoring is installed by Mars.
-- **App updates are manual:** Use GitHub Releases. Definition updates do not upgrade the ClamAV engine; use `brew upgrade clamav` for that.
+- **App updates are manual:** Check and download inside Settings, then explicitly replace the app in Finder. Definition updates do not upgrade the ClamAV engine; use `brew upgrade clamav` for that.
 - **Sleeping is sleeping:** Mars does not keep the Mac awake or schedule power-on. Missed runs are subject to macOS launchd behavior, and a busy engine skips that occurrence.
 
 ## Local data and privacy
 
 Data lives in `~/Library/Application Support/mars/`: preferences, official definition databases, reports, and logs. Reports contain filenames and detection names; review exports before sharing. Mars retains the latest 200 reports and their associated scan logs; each raw scan log is capped at approximately 32 MiB.
 
-Mars has no telemetry or project-operated relay. Scanned files are not uploaded by Mars. Homebrew and FreshClam contact their respective distribution infrastructure, and buttons can open GitHub or documentation in your browser. See [Privacy](PRIVACY.md) and [Security](SECURITY.md) for details.
+Mars has no telemetry or project-operated relay. Scanned files are not uploaded by Mars. Homebrew and FreshClam contact their respective distribution infrastructure; manual app-update checks contact GitHub, and buttons can open documentation in your browser. See [Privacy](PRIVACY.md) and [Security](SECURITY.md) for details.
 
 ## Develop and test
 

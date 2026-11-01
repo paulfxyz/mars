@@ -72,7 +72,13 @@ public enum ProcessRunner {
 
 public struct Engine {
     public let storage: Storage
-    public init(storage: Storage = Storage()) { self.storage = storage }
+    private let officialUpdateOverride: ((Cancellation, (String) -> Void) throws -> Void)?
+    public init(storage: Storage = Storage()) { self.storage = storage; officialUpdateOverride = nil }
+    // Internal test seam: deterministic refresh + real native scanning, without making CI
+    // download the full official database or exposing any runtime/test-mode bypass in the app.
+    init(storage: Storage, officialUpdateOverride: @escaping (Cancellation, (String) -> Void) throws -> Void) {
+        self.storage = storage; self.officialUpdateOverride = officialUpdateOverride
+    }
     public static func executable(_ name: String) -> String? {
         let candidates = ["/opt/homebrew/bin/\(name)", "/usr/local/bin/\(name)",
                           "/opt/homebrew/opt/clamav/bin/\(name)", "/usr/local/opt/clamav/bin/\(name)"]
@@ -91,13 +97,18 @@ public struct Engine {
             log: storage.logs.appendingPathComponent("install.log"), line: line)
         guard code == 0 && Self.installed else { throw MarsError.message("ClamAV installation did not finish. Review the activity log and try again.") }
     }
-    public func update(cancellation: Cancellation, line: (String) -> Void) throws {
+    public func updateOfficial(cancellation: Cancellation, line: (String) -> Void) throws {
         let operationLock = try OperationLock(storage: storage)
         defer { withExtendedLifetime(operationLock) {} }
         try updateUnlocked(cancellation: cancellation, line: line)
-        for source in storage.sources().filter(\.enabled) where source.kind != .local {
-            try SourceManager(storage: storage).updateUnlocked(id: source.id, cancellation: cancellation, line: line)
-        }
+    }
+    @discardableResult
+    public func update(cancellation: Cancellation, line: (String) -> Void) throws -> [SourceRefreshIssue] {
+        let operationLock = try OperationLock(storage: storage)
+        defer { withExtendedLifetime(operationLock) {} }
+        try updateUnlocked(cancellation: cancellation, line: line)
+        return try SourceManager(storage: storage).refreshOptionalUnlocked(storage.sources().filter(\.enabled),
+            cancellation: cancellation, line: line)
     }
     public func installOptional(package: String, cancellation: Cancellation, line: (String) -> Void) throws {
         guard ["yara-x", "gnupg"].contains(package), let brew = Self.brew else { throw MarsError.message("Homebrew is required for this optional component.") }
@@ -108,6 +119,7 @@ public struct Engine {
         guard code == 0 else { throw MarsError.message("Optional component installation did not finish. Check the console. On older macOS or Intel, Homebrew may need to build from source or may not support the current formula.") }
     }
     private func updateUnlocked(cancellation: Cancellation, line: (String) -> Void) throws {
+        if let officialUpdateOverride { try officialUpdateOverride(cancellation, line); return }
         guard let freshclam = Self.executable("freshclam") else { throw MarsError.message("Install ClamAV before updating definitions.") }
         try storage.writeFreshclamConfig()
         let code = try ProcessRunner.run(freshclam, ["--config-file=\(storage.config.path)", "--stdout"],
@@ -158,14 +170,14 @@ public struct Engine {
             let requested = sources.filter { $0.engine == .clamav || yaraEnabled }
             let missingYaraSource = yaraEnabled && !requested.contains(where: { $0.engine == .yaraX })
             let total = 1 + requested.count + (missingYaraSource ? 1 : 0)
+            let manager = SourceManager(storage: storage)
+            var refreshIssues: [SourceRefreshIssue] = []
             progress(ScanUpdate(stage: "Preparing your scan", explanation: "Checking the selected folders, engines, and sources. Nothing on your Mac will be changed.", totalPasses: total))
             if preferences.updateBeforeScan {
                 progress(ScanUpdate(stage: "Refreshing detection sources", explanation: "Downloading and validating updates before looking at your files.", totalPasses: total))
                 line("Updating definitions before scanning…")
                 try updateUnlocked(cancellation: cancellation, line: line)
-                for source in requested where source.kind != .local {
-                    try SourceManager(storage: storage).updateUnlocked(id: source.id, cancellation: cancellation, line: line)
-                }
+                refreshIssues = try manager.refreshOptionalUnlocked(requested, cancellation: cancellation, line: line)
             }
             guard storage.hasDefinitions else { throw MarsError.message("Download definitions before your first scan.") }
             line("Scanning \(targets.joined(separator: ", "))")
@@ -204,16 +216,20 @@ public struct Engine {
             var completed = 1
             var plan: YaraPlan?
             defer { if let plan { try? FileManager.default.removeItem(at: plan.list) } }
-            for source in requested {
+            for requestedSource in requested {
                 if cancellation.isCancelled { break }
+                // A first-use update may have activated this source just above. Do not inspect
+                // the stale pre-update metadata and incorrectly report it as unavailable.
+                let source = storage.sources().first { $0.id == requestedSource.id } ?? requestedSource
                 line("[\(source.engine.rawValue) / \(source.name)] Starting this source's inspection.")
                 let active = storage.activeSource(source.id)
                 let logURL = storage.logs.appendingPathComponent("\(record.id.uuidString)-\(source.id).log")
                 progress(ScanUpdate(stage: "\(source.engine.rawValue) · \(source.name)", explanation: "Checking this source separately so every match has clear provenance.",
                     source: source.name, completedPasses: completed, totalPasses: total, findings: record.findings.count))
-                guard source.updated != nil, FileManager.default.fileExists(atPath: active.path) else {
+                let problem = refreshIssues.first { $0.id == source.id }?.message ?? manager.setupIssue(for: source, requireActive: true)
+                if let problem {
                     record.passes?.append(ScanPass(engine: source.engine.rawValue, source: source.name, status: "notRun", warnings: 1))
-                    record.coverageNotes?.append("\(source.name) was enabled but has no validated active files. Configure and update it, or disable it.")
+                    record.coverageNotes?.append("\(source.name) did not run: \(problem)")
                     record.warnings += 1; completed += 1; continue
                 }
                 if source.engine == .clamav {

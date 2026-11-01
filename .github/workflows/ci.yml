@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish a tested community preview to GitHub Releases
+        description: Publish the tested version to GitHub Releases
         type: boolean
         default: false
 permissions:
@@ -49,6 +49,7 @@ jobs:
           capture sources --sources
           capture scanning --scanning
           capture results --results
+          capture optional-source --results --skipped-source
       - uses: actions/upload-artifact@v4
         with:
           name: Mars-macOS-universal
@@ -71,21 +72,23 @@ jobs:
         with:
           name: Mars-macOS-universal
           path: release-assets
-      - name: Publish immutable preview assets
+      - name: Publish immutable release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=v1.0.0
+          VERSION=$(sed -n 's/^VERSION=//p' scripts/package.sh)
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          TAG="v$VERSION"
           if gh release view "$TAG" --json isDraft > /tmp/mars-release.json 2>/dev/null; then
             if [ "$(jq -r .isDraft /tmp/mars-release.json)" != true ]; then
               echo "::error::Published version already exists. Never replace published release assets."
               exit 1
             fi
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "Mars 1.0.0 · Two local engines" --draft --notes-file docs/RELEASE-1.0.0.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Mars $VERSION" --draft --notes-file "docs/RELEASE-$VERSION.md"
           fi
-          gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file docs/RELEASE-1.0.0.md
+          gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file "docs/RELEASE-$VERSION.md"
           (cd release-assets/dist && sha256sum -c SHA256SUMS.txt)
-          gh release upload "$TAG" release-assets/dist/Mars-1.0.0-macOS-universal.zip release-assets/dist/SHA256SUMS.txt
+          gh release upload "$TAG" "release-assets/dist/Mars-$VERSION-macOS-universal.zip" release-assets/dist/SHA256SUMS.txt
           gh release edit "$TAG" --draft=false --prerelease=false --latest

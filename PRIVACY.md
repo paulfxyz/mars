@@ -16,6 +16,10 @@ Homebrew installs engine software and dependencies from its own infrastructure. 
 
 The optional Homebrew installer downloads a script from Homebrew's official GitHub repository and runs it in a visible Terminal only after you confirm. Documentation and source buttons open external websites in your browser. Mars does not automatically check GitHub for app updates.
 
+From 1.1.0, an explicit Check for app updates action contacts GitHub's public release API. An explicit download retrieves the release checksum and ZIP from the official repository; GitHub sees normal connection metadata. No account, access token, scan result, local filename, or file content is submitted with these requests.
+
+Verified update archives are stored under the local `Updates` directory. Temporary download stages are removed after normal completion or failure; interrupted process termination can leave a partial private cache. The updater does not extract or execute downloaded content.
+
 Mars does not pass scanned file contents to a cloud scanner or submit samples. It does not enable optional ClamAV sample-submission features.
 
 ## Additional engines and sources in 1.0.0

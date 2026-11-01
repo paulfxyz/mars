@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import MarsCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -31,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if model?.appUpdateBusy == true { model?.cancelAppUpdate() }
         guard let model, model.busy else { return .terminateNow }
         let alert = NSAlert()
         alert.messageText = "An engine operation is running."
@@ -73,10 +75,12 @@ struct MarsApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About Mars") {
                     NSApp.orderFrontStandardAboutPanel(options: [
-                        .applicationName: "Mars", .applicationVersion: "1.0.0",
+                        .applicationName: "Mars", .applicationVersion: AppVersion.current,
                         .credits: NSAttributedString(string: "Your Mac. Two local engines.\nAn independent open-source app by Paul Fleury.\nMIT app · Third-party definitions have separate licenses")
                     ])
                 }
+                Button("Check for app updates…") { model.page = .settings; model.checkAppUpdates() }
+                    .disabled(model.appUpdateBusy)
             }
             CommandGroup(after: .newItem) {
                 Button("Scan now") { model.startScan() }.keyboardShortcut("r").disabled(model.busy || !model.installed)

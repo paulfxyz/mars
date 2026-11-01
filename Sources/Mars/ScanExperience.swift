@@ -90,7 +90,7 @@ struct ScanResultsView: View {
                 Image(systemName: record.outcome == .completed ? "checkmark.shield" : "exclamationmark.shield")
                     .font(.system(size: 32)).foregroundStyle(record.outcome == .completed ? Palette.green : Palette.red)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(record.outcome.title).font(.system(size: 27, weight: .medium, design: .serif))
+                    Text(record.displayTitle).font(.system(size: 25, weight: .medium, design: .serif))
                     Text("\(record.scope.title) · \(record.started.formatted(date: .abbreviated, time: .shortened))")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
@@ -105,10 +105,20 @@ struct ScanResultsView: View {
                             Text("What this means").font(.system(size: 18, weight: .medium, design: .serif))
                             Text(Interpretation.summary(record)).font(.system(size: 13)).lineSpacing(5)
                             HStack(spacing: 22) {
-                                Label("\(record.scannedFiles.formatted()) baseline files", systemImage: "doc")
-                                Label("\(record.findings.count) matches", systemImage: "shield")
-                                Label("\(record.warnings) coverage warnings", systemImage: "exclamationmark.triangle")
+                                Label("Baseline files: \(record.scannedFiles.formatted())", systemImage: "doc")
+                                Label("Matches: \(record.findings.count)", systemImage: "shield")
+                                Label("Coverage warnings: \(record.warnings)", systemImage: "exclamationmark.triangle")
                             }.font(.system(size: 10)).foregroundStyle(.secondary)
+                        }
+                    }
+                    if record.outcome == .failed && !record.note.isEmpty {
+                        Card {
+                            VStack(alignment: .leading, spacing: 9) {
+                                Text("Why this stopped").font(.system(size: 15, weight: .semibold))
+                                Text(record.note).font(.system(size: 12)).foregroundStyle(.secondary).textSelection(.enabled)
+                                Text("No scan result should be inferred from a failure to start. Check the indicated setup step, then prepare another scan.")
+                                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                            }
                         }
                     }
                     if record.warnings > 0 || record.exitCode == 2 || record.outcome == .incomplete {

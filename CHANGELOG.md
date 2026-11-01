@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+User-reported scan/Settings fix and an in-app update function.
+
+- Prevented an enabled, unconfigured SecuriteInfo source from aborting baseline scans and official definition updates.
+- Separated provider terms acceptance, configuration, validation, and activation; retained safe handling for legacy 1.0.0 profiles.
+- Made optional update failures explicit skipped checks, with baseline results preserved and accurately labeled.
+- Corrected first-update source metadata refresh and promoted failure explanations into the readable report.
+- Added manual stable-release checks, numeric version comparison, official-repository asset restrictions, SHA-256 verified downloads, and preserved macOS quarantine metadata.
+- Added deterministic official-refresh seams plus real native scans to cover the default pre-scan update path without downloading an entire official database on every CI run.
+
 ## 1.0.0
 
 Two-engine and multi-source release, with clearer during-scan and after-scan guidance.

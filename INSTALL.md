@@ -58,6 +58,8 @@ Mars 1.0.0 adds Detection Sources. ClamAV remains the required baseline; to use 
 
 Every unofficial source requires a terms confirmation. Elastic's starter rules are pinned and hash-checked; Sanesecurity requires GnuPG and rsync connectivity; SecuriteInfo requires your own licensed official URLs. Configure those URLs inside Mars, not in chat or a public issue. A failed verification leaves the previous source untouched, and Roll back swaps the retained versions.
 
+In 1.1.0, accepting terms does not enable a source. Complete configuration, use Update & validate, then switch the source on. Older profiles with an enabled but incomplete source still run the ClamAV baseline; missing optional checks appear as skipped. Settings updates official definitions independently; Detection Sources offers a separate update-all action.
+
 Install verification tools installs both GnuPG and a current Homebrew rsync. Built-in macOS rsync versions can differ substantially; Mars prefers the Homebrew binary and bounds each transfer with a wall-clock deadline. Sanesecurity's signed payload dates are displayed separately from its download time, because some databases contain older historical signatures.
 
 During a scan, Mars displays human-readable stages and a collapsible read-only console. Observed results are not an estimate of remaining work. YARA-X first builds a bounded candidate list; candidates submitted are not presented as a confirmed scanned-file count.
@@ -72,7 +74,9 @@ Update failures can stop a scan before a raw scan log exists. In that case, chec
 
 ## Update or uninstall
 
-App updates are manual through [GitHub Releases](https://github.com/paulfxyz/mars/releases). Quit the GUI, allow any scheduled scan to finish, replace the app, then reopen it and Save schedule again. Updating definitions is separate from upgrading the engine; use `brew upgrade clamav` in Terminal for an engine upgrade.
+App updates can be checked and downloaded in Settings → Mars app updates, or through the app menu. Mars uses the official stable GitHub release and verifies the exact archive's SHA-256 checksum before offering Reveal in Finder. Downloads retain macOS quarantine metadata. A checksum is not a Developer ID signature, and Mars does not install, extract, or restart itself automatically.
+
+To install, finish any running scan, quit Mars, extract the verified ZIP, and replace the app in Applications. Reopen it and Save schedule again if you use background scanning. Preferences, sources, and history remain in the same local data directory. Updating definitions is separate from upgrading the engine; use `brew upgrade clamav` in Terminal for an engine upgrade.
 
 To uninstall, first disable scheduled scans and Save schedule in Mars. Then quit and delete Mars.app. Your data is retained until you choose to delete `~/Library/Application Support/mars/`. Homebrew's ClamAV installation is independent; remove it yourself with `brew uninstall clamav` only if nothing else uses it.
 

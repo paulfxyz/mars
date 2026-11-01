@@ -28,9 +28,16 @@ final class AppModel: ObservableObject {
     @Published var operationStarted: Date?
     @Published var operationFinished: Date?
     @Published var consoleGeneration = 0
+    @Published var optionalUpdateWarnings: [String] = []
+    @Published var appUpdateBusy = false
+    @Published var appUpdateMessage = "Check GitHub for a newer stable Mars release."
+    @Published var appUpdateError: String?
+    @Published var availableAppRelease: AppRelease?
+    @Published var verifiedAppDownload: URL?
     let storage = Storage()
     let demo = ProcessInfo.processInfo.arguments.contains("--demo")
     private var cancellation = Cancellation()
+    private var updateCancellation = Cancellation()
     private var refreshTimer: Timer?
 
     enum Page: String, CaseIterable, Identifiable {
@@ -80,6 +87,13 @@ final class AppModel: ObservableObject {
                 record.coverageNotes = ["Illustrative permission warning: one folder could not be checked."]
                 record.passes = [ScanPass(engine: "ClamAV", source: "Official ClamAV", status: "completed", files: 24861),
                     ScanPass(engine: "YARA-X", source: "Illustrative demo source", status: "completed", files: 100, findings: 1, countMeaning: "candidate files submitted")]
+                if arguments.contains("--skipped-source") {
+                    record.findings = []; record.outcome = .incomplete; record.exitCode = 0
+                    record.note = "Synthetic reproduction of the 1.0.0 setup issue, showing the repaired behavior."
+                    record.coverageNotes = ["SecuriteInfo did not run: No subscription URLs are configured. Configure this optional source, or leave it off; the ClamAV baseline has still completed."]
+                    record.passes = [ScanPass(engine: "ClamAV", source: "Official ClamAV", status: "completed", files: 24861),
+                        ScanPass(engine: "ClamAV", source: "SecuriteInfo subscription", status: "notRun", warnings: 1)]
+                }
                 let previewRecord = record
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.selectedRecord = previewRecord }
             }
@@ -155,14 +169,22 @@ final class AppModel: ObservableObject {
         run("Installing ClamAV") { token, emit in
             try engine.install(cancellation: token, line: emit)
             emit("ClamAV installed. Downloading definitions…")
-            try engine.update(cancellation: token, line: emit)
+            try engine.updateOfficial(cancellation: token, line: emit)
             return nil
         }
     }
-    func updateDefinitions() {
+    func updateDefinitions(allSources: Bool = false) {
         let engine = Engine(storage: storage)
-        run("Updating definitions") { token, emit in
-            try engine.update(cancellation: token, line: emit); return nil
+        optionalUpdateWarnings = []
+        run(allSources ? "Updating enabled detection sources" : "Updating official ClamAV definitions") { token, emit in
+            if allSources {
+                let issues = try engine.update(cancellation: token, line: emit)
+                DispatchQueue.main.async { self.optionalUpdateWarnings = issues.map(\.description) }
+            } else {
+                try engine.updateOfficial(cancellation: token, line: emit)
+            }
+            emit("Official ClamAV definitions are ready. Optional-source issues, if any, are listed separately.")
+            return nil
         }
     }
     func startScan() {
@@ -236,23 +258,25 @@ final class AppModel: ObservableObject {
         if let details { error = "Could not open the Homebrew installer in Terminal: \(details). You can install it from brew.sh instead." }
     }
     func enableSource(_ source: DetectionSource) {
-        guard !demo else { return }
+        guard !demo, !busy else { return }
         if !source.enabled && !source.acceptedTerms { sourceConsent = source; return }
-        changeSource(source.id) { $0.enabled.toggle() }
+        do {
+            try SourceManager(storage: storage).setEnabled(id: source.id, enabled: !source.enabled)
+            refresh()
+        } catch { self.error = error.localizedDescription }
     }
     func acceptSource(_ source: DetectionSource) {
-        changeSource(source.id) { $0.acceptedTerms = true; $0.enabled = true }
-        sourceConsent = nil
-    }
-    private func changeSource(_ id: String, edit: (inout DetectionSource) -> Void) {
         guard !busy, !demo else { return }
         do {
-            let operationLock = try OperationLock(storage: storage)
-            defer { withExtendedLifetime(operationLock) {} }
-            var values = storage.sources()
-            guard let index = values.firstIndex(where: { $0.id == id }) else { return }
-            edit(&values[index]); try storage.saveSources(values); refresh()
+            try SourceManager(storage: storage).acceptTerms(id: source.id)
+            refresh(); sourceConsent = nil
         } catch { self.error = error.localizedDescription }
+    }
+    func sourceSetupIssue(_ source: DetectionSource, requireActive: Bool = true) -> String? {
+        SourceManager(storage: storage).setupIssue(for: source, requireActive: requireActive)
+    }
+    var activeSourceSetupIssues: [String] {
+        sources.filter(\.enabled).compactMap { source in sourceSetupIssue(source).map { "\(source.name): \($0)" } }
     }
     func updateSource(_ source: DetectionSource) {
         let manager = SourceManager(storage: storage)
@@ -287,7 +311,11 @@ final class AppModel: ObservableObject {
         do {
             let operationLock = try OperationLock(storage: storage)
             defer { withExtendedLifetime(operationLock) {} }
-            try storage.setPrivateFeeds(text); showPrivateFeedSetup = false
+            try storage.setPrivateFeeds(text)
+            var values = storage.sources()
+            if let index = values.firstIndex(where: { $0.kind == .securiteinfo }) { values[index].lastError = nil }
+            try storage.saveSources(values)
+            refresh(); showPrivateFeedSetup = false
         } catch { self.error = error.localizedDescription }
     }
     func rescan(_ record: ScanRecord) {
@@ -296,6 +324,46 @@ final class AppModel: ObservableObject {
         if record.scope == .folders { preferences.folders = record.targets }
         // A fresh scan is explicit; this action only restores scope, never starts work secretly.
     }
+    func checkAppUpdates() {
+        guard !demo, !appUpdateBusy else { return }
+        appUpdateBusy = true; appUpdateError = nil; availableAppRelease = nil; verifiedAppDownload = nil
+        appUpdateMessage = "Checking the official Mars release…"
+        updateCancellation = Cancellation()
+        let token = updateCancellation, updater = AppUpdater(storage: storage)
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let release = try updater.latest(cancellation: token)
+                DispatchQueue.main.async {
+                    self.appUpdateBusy = false
+                    if let current = AppVersion(AppVersion.current), release.version > current {
+                        self.availableAppRelease = release
+                        self.appUpdateMessage = "Mars \(release.version) is available. You are running \(AppVersion.current)."
+                    } else { self.appUpdateMessage = "You are up to date. Installed version: \(AppVersion.current)." }
+                }
+            } catch {
+                DispatchQueue.main.async { self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription }
+            }
+        }
+    }
+    func downloadAppUpdate() {
+        guard !demo, !appUpdateBusy, let release = availableAppRelease else { return }
+        appUpdateBusy = true; appUpdateError = nil
+        appUpdateMessage = "Downloading Mars \(release.version) and verifying its checksum…"
+        updateCancellation = Cancellation()
+        let token = updateCancellation, updater = AppUpdater(storage: storage)
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let file = try updater.download(release, cancellation: token)
+                DispatchQueue.main.async {
+                    self.appUpdateBusy = false; self.verifiedAppDownload = file
+                    self.appUpdateMessage = "Mars \(release.version) downloaded. SHA-256 checksum verified; nothing has been installed."
+                }
+            } catch {
+                DispatchQueue.main.async { self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription }
+            }
+        }
+    }
+    func cancelAppUpdate() { updateCancellation.cancel() }
 }
 
 /// A bounded relay keeps verbose per-file terminal output from flooding the main queue.
