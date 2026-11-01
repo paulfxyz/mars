@@ -84,7 +84,7 @@ struct MarsApp: App {
             }
             CommandGroup(after: .newItem) {
                 Button("Scan now") { model.startScan() }.keyboardShortcut("r").disabled(model.busy || !model.installed)
-                Button("Update definitions") { model.updateDefinitions() }.keyboardShortcut("u").disabled(model.busy || !model.installed)
+                Button("Update official definitions") { model.updateDefinitions() }.keyboardShortcut("u").disabled(model.busy || !model.installed)
             }
             CommandGroup(replacing: .appTermination) {
                 Button("Quit Mars") {
@@ -110,7 +110,7 @@ struct MarsMenu: View {
         Text(model.busy ? model.operation : "Mars · On-demand scanning")
         Button("Open Mars") { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) }
         Button("Scan now") { model.startScan() }.disabled(model.busy || !model.installed)
-        Button("Update definitions") { model.updateDefinitions() }.disabled(model.busy || !model.installed)
+        Button("Update official definitions") { model.updateDefinitions() }.disabled(model.busy || !model.installed)
         Divider()
         Text(model.scheduleSummary)
         Button("Quit Mars") { NSApp.terminate(nil) }.disabled(model.busy)

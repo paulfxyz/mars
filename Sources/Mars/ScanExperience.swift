@@ -186,7 +186,7 @@ struct ScanResultsView: View {
             Divider()
             HStack {
                 Button("Export report…") { model.export(record) }
-                Button("Review scan console") { openLog(record.logPath) }.disabled(record.logPath.isEmpty)
+                Button("Review scan console") { openLog(record.logPath) }.disabled(!FileManager.default.fileExists(atPath: record.logPath))
                 Button("Privacy settings") { model.open("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") }
                 Button("Engines & sources") { dismiss(); model.page = .sources }
                 Spacer()

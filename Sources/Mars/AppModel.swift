@@ -341,7 +341,10 @@ final class AppModel: ObservableObject {
                     } else { self.appUpdateMessage = "You are up to date. Installed version: \(AppVersion.current)." }
                 }
             } catch {
-                DispatchQueue.main.async { self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription }
+                DispatchQueue.main.async {
+                    self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription
+                    self.appUpdateMessage = "No update was installed. Retry the check or open the release page."
+                }
             }
         }
     }
@@ -359,7 +362,10 @@ final class AppModel: ObservableObject {
                     self.appUpdateMessage = "Mars \(release.version) downloaded. SHA-256 checksum verified; nothing has been installed."
                 }
             } catch {
-                DispatchQueue.main.async { self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription }
+                DispatchQueue.main.async {
+                    self.appUpdateBusy = false; self.appUpdateError = error.localizedDescription
+                    self.appUpdateMessage = "No update was installed. Retry the download or open the release page."
+                }
             }
         }
     }

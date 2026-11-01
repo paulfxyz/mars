@@ -270,7 +270,7 @@ struct ScanView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Toggle("Update definitions before scanning", isOn: $model.preferences.updateBeforeScan)
                         .font(.system(size: 13)).disabled(model.busy)
-                    Text("Recommended. If the update fails, the scan stops rather than silently using old definitions.")
+                    Text("Recommended. An official ClamAV update failure stops the scan. Unavailable optional sources are skipped and listed in the report, not silently reused.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                     Divider()
                     HStack {
