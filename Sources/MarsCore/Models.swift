@@ -16,7 +16,7 @@ public enum ScanOutcome: String, Codable {
     public var title: String {
         switch self {
         case .completed: return "No threats detected"
-        case .threatsFound: return "Threats detected"
+        case .threatsFound: return "Items need your review"
         case .incomplete: return "Scan incomplete"
         case .failed: return "Scan failed"
         case .cancelled: return "Scan cancelled"
@@ -28,6 +28,9 @@ public struct Finding: Codable, Identifiable, Equatable {
     public var id: UUID = UUID()
     public var path: String
     public var signature: String
+    public var engine: String?
+    public var source: String?
+    public var assessment: String?
     public init(path: String, signature: String) { self.path = path; self.signature = signature }
 }
 
@@ -45,6 +48,8 @@ public struct ScanRecord: Codable, Identifiable {
     public var scheduled = false
     public var logPath = ""
     public var note = ""
+    public var passes: [ScanPass]?
+    public var coverageNotes: [String]?
     public init(scope: ScanScope, targets: [String]) { self.scope = scope; self.targets = targets }
 }
 
@@ -57,7 +62,65 @@ public struct Preferences: Codable, Equatable {
     public var hour = 12
     public var minute = 0
     public var updateBeforeScan = true
+    public var yaraXEnabled: Bool?
     public init() {}
+}
+
+public struct ScanPass: Codable, Identifiable {
+    public var id = UUID()
+    public var engine: String
+    public var source: String
+    public var status: String
+    public var files: Int
+    public var findings: Int
+    public var warnings: Int
+    public var logPath: String
+    public var countMeaning: String
+    public init(engine: String, source: String, status: String, files: Int = 0, findings: Int = 0,
+                warnings: Int = 0, logPath: String = "", countMeaning: String = "engine-reported files") {
+        self.engine = engine; self.source = source; self.status = status; self.files = files
+        self.findings = findings; self.warnings = warnings; self.logPath = logPath; self.countMeaning = countMeaning
+    }
+}
+
+public struct ScanUpdate {
+    public var stage: String
+    public var explanation: String
+    public var source: String
+    public var completedPasses: Int
+    public var totalPasses: Int
+    public var observedFiles: Int
+    public var findings: Int
+    public var currentPath: String
+    public init(stage: String, explanation: String, source: String = "", completedPasses: Int = 0,
+                totalPasses: Int = 0, observedFiles: Int = 0, findings: Int = 0, currentPath: String = "") {
+        self.stage = stage; self.explanation = explanation; self.source = source
+        self.completedPasses = completedPasses; self.totalPasses = totalPasses
+        self.observedFiles = observedFiles; self.findings = findings; self.currentPath = currentPath
+    }
+}
+
+public enum Interpretation {
+    public static func summary(_ record: ScanRecord) -> String {
+        switch record.outcome {
+        case .completed: return "The selected checks finished without reporting a match. This is reassuring, but it does not prove every file is safe."
+        case .threatsFound: return "One or more signatures or rules matched. A match can indicate malware, a suspicious pattern, or a false positive. Do not open a flagged file while you investigate."
+        case .incomplete: return "Mars could not finish checking everything requested. Missing permissions, unreadable files, or engine limits can leave gaps; an empty finding list is not a clean bill of health."
+        case .failed: return "The scan could not complete. Read the explanation and engine console, fix the setup or update problem, then try a small folder again."
+        case .cancelled: return "You stopped this scan. Any findings already recorded are still worth reviewing, but the remaining files were not checked."
+        }
+    }
+    public static func nextSteps(_ record: ScanRecord) -> [String] {
+        var steps: [String] = []
+        if !record.findings.isEmpty { steps += ["Do not open or run flagged files.", "Check the rule name, source, and file location. A rule match is not confirmation of infection.", "If this looks like a real compromise, disconnect from networks and seek trusted help before changing evidence."] }
+        if record.warnings > 0 || [.incomplete, .failed].contains(record.outcome) {
+            steps += ["Review coverage notes and logs; grant only the access you intend to allow.", "Update the enabled sources, then retry a smaller known folder."]
+        }
+        if record.outcome == .completed { steps += ["Keep macOS, the scanning engines, and definitions updated.", "Save a scan routine if useful. Mars does not provide real-time protection."] }
+        if record.outcome == .cancelled { steps.append("Run another scan when convenient; cancelled work is not automatically resumed.") }
+        steps.append("Mars has not deleted, moved, or quarantined anything.")
+        return steps
+    }
 }
 
 public enum MarsError: LocalizedError {
@@ -77,7 +140,9 @@ public struct ScanParser {
         if line.hasSuffix(" FOUND"), let separator = line.range(of: ": ", options: .backwards) {
             let path = String(line[..<separator.lowerBound])
             let signature = String(line[separator.upperBound...].dropLast(6))
-            findings.append(Finding(path: path, signature: signature))
+            var finding = Finding(path: path, signature: signature)
+            finding.assessment = signature.contains("Heuristics.Limits.Exceeded") ? "Coverage limit, not a malware verdict" : "Signature match; verify before acting"
+            findings.append(finding)
             if signature.contains("Heuristics.Limits.Exceeded") { warnings += 1 }
         }
         if line.hasPrefix("Scanned files:"),

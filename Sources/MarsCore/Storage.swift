@@ -37,8 +37,10 @@ public struct Storage {
         let old = history().dropFirst(200)
         for entry in old {
             try? FileManager.default.removeItem(at: records.appendingPathComponent("\(entry.id.uuidString).json"))
-            if URL(fileURLWithPath: entry.logPath).deletingLastPathComponent().standardizedFileURL == logs.standardizedFileURL {
-                try? FileManager.default.removeItem(atPath: entry.logPath)
+            for path in [entry.logPath] + (entry.passes ?? []).map(\.logPath) {
+                if URL(fileURLWithPath: path).deletingLastPathComponent().standardizedFileURL == logs.standardizedFileURL {
+                    try? FileManager.default.removeItem(atPath: path)
+                }
             }
         }
     }
@@ -57,7 +59,10 @@ public struct Storage {
     }
     public var hasDefinitions: Bool {
         let files = (try? FileManager.default.contentsOfDirectory(atPath: database.path)) ?? []
-        return files.contains { $0.hasSuffix(".cvd") || $0.hasSuffix(".cld") }
+        return files.contains { name in
+            ["cvd", "cld", "ndb", "hdb", "ldb", "hsb"].contains(URL(fileURLWithPath: name).pathExtension)
+                && ((try? database.appendingPathComponent(name).resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 0
+        }
     }
     public func writeFreshclamConfig() throws {
         try prepare()

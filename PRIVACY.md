@@ -18,6 +18,14 @@ The optional Homebrew installer downloads a script from Homebrew's official GitH
 
 Mars does not pass scanned file contents to a cloud scanner or submit samples. It does not enable optional ClamAV sample-submission features.
 
+## Additional engines and sources in 1.0.0
+
+YARA-X also scans locally; no sample upload or VirusTotal API integration is enabled. Optional Elastic updates contact raw.githubusercontent.com for pinned files and their license. Sanesecurity uses its rsync mirror and a pinned GPG public key. SecuriteInfo uses official HTTPS URLs supplied by your own authorized account.
+
+Private subscription URLs live in `private-securiteinfo-urls.txt` with 0600 permissions inside the user-only data directory, not Keychain. They are omitted from source metadata, reports, exports, and displayed logs. Downloads use short-lived 0600 curl configuration files rather than placing private URLs in process arguments. A process with the same user privileges can still read local files; the storage is access-restricted, not encrypted.
+
+Optional source directories retain an active and previous version, plus license information where supplied. Imported packs are copied locally after validation. They do not update automatically; no rules or paid feeds are submitted to the Mars repository.
+
 ## Permissions
 
 Mars runs as your user. Full Disk Access is optional and user-granted; it is not secretly enabled. Terminal handles any Homebrew administrator prompt, and Mars does not read the password. Background scans use a per-user LaunchAgent and may need separate access approval.

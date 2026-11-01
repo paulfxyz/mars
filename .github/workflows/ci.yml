@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: native-${{ github.ref }}
+  group: native-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 jobs:
   macos:
@@ -21,10 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install test engine
-        run: brew install clamav
+        run: brew install clamav yara-x gnupg
       - name: Unit and real-engine fixture tests
         env:
           MARS_CLAMAV_TESTS: "1"
+          MARS_SOURCE_NETWORK_TESTS: "1"
         run: swift test
       - name: Package universal native app
         run: bash scripts/package.sh
@@ -45,6 +46,9 @@ jobs:
           for PAGE in overview scan schedule history settings; do capture "$PAGE" --page "$PAGE"; done
           capture overview-dark --dark
           capture overview-compact --compact
+          capture sources --sources
+          capture scanning --scanning
+          capture results --results
       - uses: actions/upload-artifact@v4
         with:
           name: Mars-macOS-universal
@@ -72,16 +76,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=v0.1.0
+          TAG=v1.0.0
           if gh release view "$TAG" --json isDraft > /tmp/mars-release.json 2>/dev/null; then
             if [ "$(jq -r .isDraft /tmp/mars-release.json)" != true ]; then
               echo "::error::Published version already exists. Never replace published release assets."
               exit 1
             fi
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "Mars 0.1.0 · Community preview" --draft --prerelease --notes-file docs/RELEASE-0.1.0.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Mars 1.0.0 · Two local engines" --draft --notes-file docs/RELEASE-1.0.0.md
           fi
-          gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file docs/RELEASE-0.1.0.md
+          gh release edit "$TAG" --target "$GITHUB_SHA" --notes-file docs/RELEASE-1.0.0.md
           (cd release-assets/dist && sha256sum -c SHA256SUMS.txt)
-          gh release upload "$TAG" release-assets/dist/Mars-0.1.0-macOS-universal.zip release-assets/dist/SHA256SUMS.txt
-          gh release edit "$TAG" --draft=false --prerelease
+          gh release upload "$TAG" release-assets/dist/Mars-1.0.0-macOS-universal.zip release-assets/dist/SHA256SUMS.txt
+          gh release edit "$TAG" --draft=false --prerelease=false --latest

@@ -68,8 +68,8 @@ struct MarsApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About Mars") {
                     NSApp.orderFrontStandardAboutPanel(options: [
-                        .applicationName: "Mars", .applicationVersion: "0.1.0",
-                        .credits: NSAttributedString(string: "Your Mac. Defended with ClamAV.\nAn independent open-source app by Paul Fleury.\nMIT licensed • Community preview")
+                        .applicationName: "Mars", .applicationVersion: "1.0.0",
+                        .credits: NSAttributedString(string: "Your Mac. Two local engines.\nAn independent open-source app by Paul Fleury.\nMIT app · Third-party definitions have separate licenses")
                     ])
                 }
             }

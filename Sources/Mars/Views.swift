@@ -33,11 +33,12 @@ struct RootView: View {
                         switch model.page {
                         case .overview: OverviewView()
                         case .scan: ScanView()
+                        case .sources: DetectionSourcesView()
                         case .schedule: ScheduleView()
                         case .history: HistoryView()
                         case .settings: SettingsView()
                         }
-                        if model.busy || !model.activity.isEmpty { ActivityView() }
+                        if (model.busy || !model.activity.isEmpty) && !(model.page == .scan && model.busy) { ActivityView() }
                         HStack(spacing: 5) {
                             Image(systemName: "lock")
                             Text("Your files stay on your Mac. Mars never removes them.")
@@ -48,6 +49,12 @@ struct RootView: View {
         }
         .tint(Palette.red)
         .sheet(item: $model.selectedRecord) { record in RecordView(record: record).environmentObject(model) }
+        .sheet(item: $model.sourceConsent) { source in SourceConsentView(source: source).environmentObject(model) }
+        .sheet(isPresented: $model.showPrivateFeedSetup) { PrivateFeedsView().environmentObject(model) }
+        .alert("Install optional component?", isPresented: Binding(get: { model.optionalPackage != nil }, set: { if !$0 { model.optionalPackage = nil } })) {
+            Button("Install with Homebrew") { if let package = model.optionalPackage { model.installOptionalConfirmed(package) } }
+            Button("Cancel", role: .cancel) { model.optionalPackage = nil }
+        } message: { Text("Mars will run brew install \(model.optionalPackage ?? ""). Homebrew may build from source on older or Intel Macs. You can still use ClamAV if this component is unavailable.") }
     }
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -76,8 +83,8 @@ struct RootView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 11) {
                 Image(systemName: "sparkle").foregroundStyle(Color(red: 0.94, green: 0.57, blue: 0.43))
-                Text("The power of ClamAV.\nThe calm of a native app.").font(.system(size: 12)).lineSpacing(5).foregroundStyle(.white.opacity(0.6))
-                Text("OPEN SOURCE · v0.1.0").font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
+                Text("Two local engines.\nOne calm place to scan.").font(.system(size: 12)).lineSpacing(5).foregroundStyle(.white.opacity(0.6))
+                Text("OPEN SOURCE · v1.0.0").font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundStyle(.white.opacity(0.3))
             }.padding(12).padding(.bottom, 22)
         }.padding(.horizontal, 18).frame(width: 208).background(Palette.ink).foregroundStyle(.white)
     }
@@ -140,7 +147,7 @@ struct OverviewView: View {
                 VStack(alignment: .leading, spacing: 11) {
                     Text("MEET YOUR QUIET DEFENDER").font(.system(size: 9, weight: .bold)).tracking(1.5).foregroundStyle(Palette.red)
                     Text("Your Mac.\nUnder your command.").font(.system(size: 30, weight: .medium, design: .serif)).foregroundStyle(Palette.ink)
-                    Text("A little mythology.\nA serious antivirus engine.").font(.system(size: 12)).foregroundStyle(Palette.ink.opacity(0.65)).lineSpacing(3)
+                    Text("Two local engines.\nA little extra peace of mind.").font(.system(size: 12)).foregroundStyle(Palette.ink.opacity(0.65)).lineSpacing(3)
                     PrimaryButton(title: model.installed ? "Start a scan" : "Set up Mars", icon: "arrow.right") {
                         if model.installed { model.page = .scan } else { model.install() }
                     }.disabled(model.busy).padding(.top, 5)
@@ -248,8 +255,17 @@ struct ScanView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 23) {
-            SectionHeading(eyebrow: "The defense is yours", title: "A scan, on your terms.", subtitle: "Choose where Mars looks. ClamAV does the inspection. Your files stay untouched.")
+            SectionHeading(eyebrow: "The defense is yours", title: model.busy ? "A clearer view of your scan." : "A scan, on your terms.", subtitle: "Local engines. Understandable results. Your files stay untouched.")
+            if model.busy {
+                ScanJourneyView()
+            } else {
             ScopePicker()
+            HStack {
+                Label(model.preferences.yaraXEnabled == true ? "ClamAV + YARA-X requested" : "ClamAV baseline", systemImage: "cpu")
+                Text("· \(model.sources.filter(\.enabled).count) optional sources enabled")
+                Spacer()
+                Button("Manage engines & sources") { model.page = .sources }
+            }.font(.system(size: 11)).foregroundStyle(.secondary)
             Card {
                 VStack(alignment: .leading, spacing: 14) {
                     Toggle("Update definitions before scanning", isOn: $model.preferences.updateBeforeScan)
@@ -278,6 +294,7 @@ struct ScanView: View {
                 Text("Entire Mac excludes external volumes and runtime mounts. Protected locations need Full Disk Access; engine limits and unreadable files can reduce coverage. macOS may present folder-access prompts.")
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
             } icon: { Image(systemName: "info.circle").foregroundStyle(.secondary) }
+            }
         }
     }
 }
@@ -419,7 +436,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            Text("Mars 0.1.0 · Community preview · MIT licensed\nIndependent from Apple and the ClamAV project. No real-time protection, automatic removal, or guarantee of detection.")
+            Text("Mars 1.0.0 · MIT app; third-party rules have separate licenses\nIndependent from Apple and the engine providers. No real-time protection, automatic removal, or guarantee of detection.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(5)
         }
     }
@@ -428,23 +445,7 @@ struct SettingsView: View {
 struct ActivityView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
-        Card {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Activity").font(.system(size: 13, weight: .semibold))
-                    if model.busy { ProgressView().controlSize(.mini) }
-                    Spacer()
-                    if model.busy { Button("Stop safely") { model.cancel() }.font(.system(size: 11)) }
-                }
-                ScrollView {
-                    Text(model.activity.suffix(60).joined(separator: "\n"))
-                        .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
-                        .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                }.frame(height: 140)
-                Text("ClamAV does not provide a reliable scan percentage. Large archives and database loading can take time.")
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
-            }
-        }
+        ScanJourneyView()
     }
 }
 
@@ -453,57 +454,6 @@ struct RecordView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) var dismiss
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(record.outcome.title).font(.system(size: 27, weight: .medium, design: .serif))
-                    Text(record.started.formatted(date: .long, time: .shortened)).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
-            }
-            HStack(spacing: 28) {
-                Label("\(record.scannedFiles.formatted()) files", systemImage: "doc")
-                Label("\(record.findings.count) detections", systemImage: "shield")
-                Label("\(record.warnings) warnings", systemImage: "exclamationmark.triangle")
-            }.font(.system(size: 12))
-            Text(record.note).font(.system(size: 12)).foregroundStyle(.secondary).textSelection(.enabled)
-            if record.exitCode == 2 || record.warnings > 0 {
-                Text("Coverage may be incomplete. Review the log for unreadable files, engine limits, or other errors, even if detections were found.")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Palette.red)
-            }
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("LOCATIONS").font(.system(size: 10, weight: .semibold)).tracking(1).foregroundStyle(.secondary)
-                    Text(record.targets.joined(separator: "\n")).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
-                    ForEach(record.findings) { finding in
-                        Card {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(finding.signature).font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.red)
-                                Text(finding.path).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
-                                Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: finding.path)]) }
-                            }
-                        }
-                    }
-                    if record.findings.isEmpty {
-                        Text(record.outcome == .completed ? "No detections were reported for the files ClamAV could inspect." : "No detections were recorded. This does not mean the scan completed successfully.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary).padding(.vertical)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-            Divider()
-            Text("Do not open a flagged file. Detection names can include heuristics or false positives. Verify before taking action; Mars never deletes or quarantines files.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
-            HStack {
-                Button("Export report…") { model.export(record) }
-                Button("Open raw log") {
-                    if FileManager.default.fileExists(atPath: record.logPath) { NSWorkspace.shared.open(URL(fileURLWithPath: record.logPath)) }
-                    else { model.error = "No raw scan log exists. The operation may have stopped before ClamAV began." }
-                }.disabled(record.logPath.isEmpty)
-                Spacer()
-                Text("Exit code: \(record.exitCode)").font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
-            }
-        }.padding(30).frame(width: 720, height: 580).background(Palette.background)
+        ScanResultsView(record: record)
     }
 }

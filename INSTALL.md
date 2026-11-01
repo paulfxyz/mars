@@ -54,6 +54,14 @@ If you move or replace Mars.app, open it and Save schedule again to refresh the 
 
 ## Reports and detections
 
+Mars 1.0.0 adds Detection Sources. ClamAV remains the required baseline; to use a second engine, install YARA-X there, switch on its scan inclusion, then enable and update a compatible source. Optional Homebrew packages may not support every older macOS/Intel configuration even though the Mars app itself has universal slices.
+
+Every unofficial source requires a terms confirmation. Elastic's starter rules are pinned and hash-checked; Sanesecurity requires GnuPG and rsync connectivity; SecuriteInfo requires your own licensed official URLs. Configure those URLs inside Mars, not in chat or a public issue. A failed verification leaves the previous source untouched, and Roll back swaps the retained versions.
+
+During a scan, Mars displays human-readable stages and a collapsible read-only console. Observed results are not an estimate of remaining work. YARA-X first builds a bounded candidate list; candidates submitted are not presented as a confirmed scanned-file count.
+
+The report explains the outcome, exact source provenance, coverage notes, and safe next steps. Prepare another scan restores the scope but does not start work without another click. Finder reveal, copy path, and JSON export are available; no delete or quarantine action is performed.
+
 Detections are not automatically malware confirmations. Heuristics, engine-limit alerts, and false positives require review. Do not open flagged files; use Reveal in Finder to locate them and independently investigate before deciding what to do.
 
 Mars never deletes, moves, or quarantines files. Open raw log shows ClamAV output. Export report creates a JSON file containing local paths and detection names; review it before sharing.

@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/app.png" width="112" height="112" alt="Mars shield app icon">
   <h1>Mars</h1>
-  <p>Your Mac. Defended with ClamAV.</p>
+  <p>Your Mac. Two local engines. One calm place to scan.</p>
   <p>
     <a href="https://github.com/paulfxyz/mars/releases"><img src="https://img.shields.io/github/v/release/paulfxyz/mars?include_prereleases&style=flat-square&color=bf3829" alt="Latest preview"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-bf3829?style=flat-square" alt="MIT license"></a>
@@ -15,19 +15,20 @@
 
 ## A little mythology. A serious antivirus engine.
 
-Mars is a small native macOS interface for ClamAV. Install the engine, download its definitions, and scan a folder, your home, or your startup disk without learning command-line flags.
+Mars is a native macOS companion for ClamAV and optional YARA-X. Install the engines, choose your detection sources, and scan a folder, your home, or your startup disk without learning command-line flags.
 
 The Roman god of war lends his name, not a promise of invincibility. Mars is an on-demand scanner with optional daily or weekly routines, not real-time protection. It never deletes, moves, or quarantines your files.
 
 ## Install and get started
 
-1. Download **Mars-0.1.0-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
+1. Download **Mars-1.0.0-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
 2. Extract it, move **Mars.app** to Applications, then open it.
 3. Choose **Set up Mars**. Confirm installation of ClamAV through Homebrew; Mars then downloads the official definitions. If Homebrew is missing, Mars offers to open its official installer in a visible Terminal window first.
 4. Choose **Scan**, select a location, and scan. For wider coverage, grant Full Disk Access in macOS Settings.
 5. Optionally save a daily or weekly schedule. Reports from both manual and background scans appear in History.
+6. In **Detection Sources**, optionally install YARA-X, enable its scan switch, review source terms, enable a rule source, and **Update & validate** it. More rules are not automatically better detection.
 
-**Community preview: ad-hoc signed, not Developer ID signed or notarized.** Supports Apple silicon and Intel Macs on macOS 13 or later. macOS may require explicit approval in Privacy & Security. Do not disable Gatekeeper or management policies; read the [installation guide](INSTALL.md).
+**Ad-hoc signed, not Developer ID signed or notarized.** The app supports Apple silicon and Intel Macs on macOS 13 or later; optional Homebrew components have their own compatibility requirements. Version 1.0.0 is not a claim of an external security audit. macOS may require explicit approval in Privacy & Security; do not disable Gatekeeper or management policies.
 
 ## What you get
 
@@ -39,6 +40,10 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 - **Honest reports:** Detections, engine exit status, warnings, scanned-file count, scope, timestamps, and local raw logs. Failed and cancelled scans are never presented as clean.
 - **Non-destructive by default and by design:** Reveal a flagged file in Finder and export a JSON report. No automatic deletion, relocation, or quarantine.
 - **No fake progress:** An indeterminate activity indicator and live engine output, not an invented completion percentage.
+- **Two local engines:** ClamAV baseline scanning and optional YARA-X raw-file rule analysis. Engine and source appear on each finding; repeated source-pass counts are not added together as unique files.
+- **Selectable sources:** Official ClamAV, a pinned four-file Elastic Mac starter pack, GPG-verified Sanesecurity malware hashes, user-owned SecuriteInfo feeds, and trusted local imports for both engines.
+- **Understandable scanning:** Plain-language stages, observed counts, elapsed time, safe stopping, and an expandable dark read-only terminal.
+- **Results that help:** Explanations, coverage gaps, source-by-source status, recommended next steps, Finder reveal, copy path, report export, and explicit preparation of a new scan.
 
 <img src="docs/screenshot-overview.png" width="100%" alt="Mars native overview with illustrative scan history, engine status, definition freshness, and the manga guardian">
 
@@ -46,7 +51,21 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 
 <img src="docs/screenshot-scan.png" width="100%" alt="Mars scan screen with Entire Mac, Home folder, and Selected folders, plus pre-scan definition updates and a non-destructive scan action">
 
-Explore [all seven native interface captures](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
+Explore the [native screenshot gallery](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
+
+## Detection sources, not a mystery bundle
+
+All unofficial sources are opt-in. Mars stages each update, validates it with the target engine, then activates it under the cross-process scan lock; a previous validated copy remains available for rollback. A successful compilation or authentication check does not establish detection accuracy.
+
+- **Official ClamAV:** FreshClam maintains the baseline database.
+- **Elastic Mac starter rules:** Four selected malware-family rule files, plus their license, are fetched directly from a pinned Elastic commit and must match pinned SHA-256 hashes. This is a small starter collection, not all Mac malware detection, and its [Elastic License 2.0](https://github.com/elastic/protections-artifacts/blob/main/LICENSE.txt) is separate from Mars's MIT license.
+- **Sanesecurity:** Malware hashes, file-type definitions, and the provider's false-positive allowlist are fetched using the provider's rsync mirror and checked with the pinned public GPG key. Requires GnuPG and working rsync connectivity; [provider terms and signature details](https://sanesecurity.com/usage/signatures/) apply.
+- **SecuriteInfo:** Add your own authorized official HTTPS download URLs. Mars neither supplies a subscription nor redistributes paid definitions; the provider says Basic is for installation validation rather than useful protection. See [the provider FAQ](https://www.securiteinfo.com/clamav-antivirus/faq-clamav-unofficial-signatures_en.shtml).
+- **Local imports:** Add trusted ClamAV definitions, ClamAV-compatible standalone YARA, or YARA-X rules. Includes and compiled YARA are rejected; engine compilation/loading must succeed before activation. Imports do not update automatically and retain their own licenses.
+
+YARA-X is a separate pattern-matching engine with a [BSD-3-Clause license and Homebrew package](https://formulae.brew.sh/formula/yara-x), not a source of automatically licensed rules. Mars scans raw candidate files up to 32 MiB, with a 500,000-file enumeration cap, no symlink following, and a one-hour per-source timeout. Archives are not unpacked by this second engine; ClamAV's baseline archive inspection remains separate. Coverage limitations are surfaced rather than silently counted as clean.
+
+SecuriteInfo URLs are stored in a user-only 0600 file inside Mars's 0700 local data directory, not Keychain. Temporary curl configuration is also 0600, so private URLs are not command-line arguments. URLs do not enter scan reports, exports, or displayed console output; other processes with your user privileges can still read your local files.
 
 ## Quiet defense, clear boundaries
 
@@ -97,7 +116,7 @@ swift run mars
 For engine integration tests and a universal app bundle:
 
 ```sh
-brew install clamav
+brew install clamav yara-x gnupg
 MARS_CLAMAV_TESTS=1 swift test
 bash scripts/package.sh
 open dist/Mars.app

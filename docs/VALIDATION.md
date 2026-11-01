@@ -1,8 +1,12 @@
-# Mars 0.1.0 validation
+# Mars validation
 
 This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
 
 ## Verified build
+
+The 1.0.0 test suite adds old-report migration, opt-in source defaults, pinned-content tamper rejection, private URL restrictions/storage permissions, atomic activation/rollback, YARA JSON attribution, candidate-list limits, cancellation, safe result interpretation, pinned GPG-key import, real two-engine scanning, missing-source coverage, invalid rule rejection, and live pinned Elastic download/compilation. The release workflow must pass these checks before publication.
+
+The historical evidence below belongs to 0.1.0 and is not presented as 1.0.0 acceptance. Native 1.0.0 screenshots and CI evidence are updated after the new run.
 
 The [native macOS run on October 31, 2026](https://github.com/paulfxyz/mars/actions/runs/41188889071) passed **17 tests with zero failures**, including the real ClamAV custom-signature fixture. The tested app-source commit is `3cb0f8c`; subsequent repository documentation and image additions do not change the app source in this release.
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0
+
+Two-engine and multi-source release, with clearer during-scan and after-scan guidance.
+
+- Optional YARA-X engine alongside the ClamAV baseline, with sequential source-specific passes and exact finding provenance.
+- Detection Sources manager, consent gates, a pinned Elastic Mac starter pack, GPG-verified Sanesecurity hashes, private SecuriteInfo feed URLs, and validated local imports for both engines.
+- Staged source activation, retained previous versions, and rollback under the shared operation lock.
+- Bounded verbose terminal relay, elapsed time, real scan stages, observed counts, and plain-language explanations.
+- Beginner-friendly report interpretation, per-source coverage, safe next steps, copy/reveal/export, and explicit rescan preparation.
+- Old report/preferences migration, tamper rejection, private-feed isolation, rollback, real dual-engine fixture, and live pinned-pack tests.
+- Demo mode now resets preferences to synthetic values before screenshot capture.
+
+Version 1.0.0 does not imply notarization, an external security audit, or real-time endpoint protection. Optional engine availability and source licenses remain separate from the app.
+
 ## 0.1.0
 
 Initial community preview of Mars, a native SwiftUI/AppKit interface for ClamAV.
