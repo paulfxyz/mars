@@ -50,6 +50,13 @@ jobs:
           capture scanning --scanning
           capture results --results
           capture optional-source --results --skipped-source
+      - name: Preserve failed UI captures for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mars-native-ui-debug
+          path: dist/screenshot-*.png
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: Mars-macOS-universal

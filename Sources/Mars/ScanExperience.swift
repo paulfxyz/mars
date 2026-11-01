@@ -193,6 +193,7 @@ struct ScanResultsView: View {
                 PrimaryButton(title: "Prepare another scan", icon: "arrow.clockwise") { dismiss(); model.rescan(record) }
             }.padding(20)
         }.frame(width: 850, height: 720).background(Palette.background)
+            .background(ReportRenderMarker())
             .onAppear { showTechnical = record.warnings > 0 || record.outcome == .incomplete }
     }
     private func openLog(_ path: String) {
@@ -201,4 +202,15 @@ struct ScanResultsView: View {
         }
         NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }
+}
+
+/// Identify the actual rendered report independent of how a macOS version classifies the
+/// SwiftUI presentation window. This is not a separate/mock report renderer.
+struct ReportRenderMarker: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.identifier = NSUserInterfaceItemIdentifier("mars-rendered-report")
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }

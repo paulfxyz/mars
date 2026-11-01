@@ -28,7 +28,7 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 5. Optionally save a daily or weekly schedule. Reports from both manual and background scans appear in History.
 6. In **Detection Sources**, optionally install YARA-X, enable its scan switch, review source terms, configure any required account, **Update & validate** the rule source, then enable it. Accepting terms alone never enables a source.
 
-**Ad-hoc signed, not Developer ID signed or notarized.** The app supports Apple silicon and Intel Macs on macOS 13 or later; optional Homebrew components have their own compatibility requirements. Version 1.0.0 is not a claim of an external security audit. macOS may require explicit approval in Privacy & Security; do not disable Gatekeeper or management policies.
+**Ad-hoc signed, not Developer ID signed or notarized.** The app supports Apple silicon and Intel Macs on macOS 13 or later; optional Homebrew components have their own compatibility requirements. Version numbers are not a claim of an external security audit. macOS may require explicit approval in Privacy & Security; do not disable Gatekeeper or management policies.
 
 ## What you get
 
@@ -54,7 +54,7 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 
 <img src="docs/screenshot-scan.png" width="100%" alt="Mars scan screen with Entire Mac, Home folder, and Selected folders, plus pre-scan definition updates and a non-destructive scan action">
 
-<img src="docs/screenshot-scanning.png" width="100%" alt="Mars 1.0.0 during a scan: plain-language stage information, real counters, elapsed time, safe stopping, and engine console">
+<img src="docs/screenshot-scanning.png" width="100%" alt="Mars during a scan: plain-language stage information, real counters, elapsed time, safe stopping, and engine console">
 
 <details>
 <summary>See how Mars explains a result</summary>
@@ -102,7 +102,7 @@ Mars serializes scans, installations, and definition updates with a shared proce
 - **Permissions matter:** Full Disk Access improves coverage but does not bypass all macOS protections. Scheduled helper access can differ from app access; check the first background report.
 - **Coverage has limits:** Symlinks are not followed. ClamAV's default file, archive, recursion, and scan-size limits remain in effect. Exceeded-limit alerts are enabled and reported; unreadable files and engine warnings reduce coverage.
 - **Entire Mac can be slow:** It scans `/`, including accessible system and user paths. macOS mount aliases may cause duplicate inspection, so file counts are engine-reported, not unique-file counts. External volumes and runtime mounts are excluded.
-- **Freshness is a signal:** Definition age uses the local `daily.cvd` or `daily.cld` modification time, not a cryptographic assessment of current upstream freshness. Older than 48 hours is flagged. A failed pre-scan update stops the scan.
+- **Freshness is a signal:** Definition age uses the local `daily.cvd` or `daily.cld` modification time, not a cryptographic assessment of current upstream freshness. Older than 48 hours is flagged. A failed official pre-scan update stops the scan; failed optional updates are reported as skipped checks while the baseline continues.
 - **No always-on engine:** No kernel extension, Endpoint Security agent, `clamd` daemon, network filter, or on-access monitoring is installed by Mars.
 - **App updates are manual:** Check and download inside Settings, then explicitly replace the app in Finder. Definition updates do not upgrade the ClamAV engine; use `brew upgrade clamav` for that.
 - **Sleeping is sleeping:** Mars does not keep the Mac awake or schedule power-on. Missed runs are subject to macOS launchd behavior, and a busy engine skips that occurrence.

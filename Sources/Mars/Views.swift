@@ -16,6 +16,28 @@ enum Palette {
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
+    private enum PresentedSheet: Identifiable {
+        case report(ScanRecord), terms(DetectionSource), privateFeeds
+        var id: String {
+            switch self {
+            case .report(let record): return "report-\(record.id)"
+            case .terms(let source): return "terms-\(source.id)"
+            case .privateFeeds: return "private-feeds"
+            }
+        }
+    }
+    private var presentedSheet: Binding<PresentedSheet?> {
+        Binding(get: {
+            if let record = model.selectedRecord { return .report(record) }
+            if let source = model.sourceConsent { return .terms(source) }
+            if model.showPrivateFeedSetup { return .privateFeeds }
+            return nil
+        }, set: { value in
+            if case .none = value {
+                model.selectedRecord = nil; model.sourceConsent = nil; model.showPrivateFeedSetup = false
+            }
+        })
+    }
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -48,9 +70,13 @@ struct RootView: View {
             }.background(Palette.background)
         }
         .tint(Palette.red)
-        .sheet(item: $model.selectedRecord) { record in RecordView(record: record).environmentObject(model) }
-        .sheet(item: $model.sourceConsent) { source in SourceConsentView(source: source).environmentObject(model) }
-        .sheet(isPresented: $model.showPrivateFeedSetup) { PrivateFeedsView().environmentObject(model) }
+        .sheet(item: presentedSheet) { sheet in
+            switch sheet {
+            case .report(let record): RecordView(record: record).environmentObject(model)
+            case .terms(let source): SourceConsentView(source: source).environmentObject(model)
+            case .privateFeeds: PrivateFeedsView().environmentObject(model)
+            }
+        }
         .alert("Install optional component?", isPresented: Binding(get: { model.optionalPackage != nil }, set: { if !$0 { model.optionalPackage = nil } })) {
             Button("Install with Homebrew") { if let package = model.optionalPackage { model.installOptionalConfirmed(package) } }
             Button("Cancel", role: .cancel) { model.optionalPackage = nil }

@@ -1,6 +1,6 @@
 # Security
 
-Mars is not an externally audited endpoint-protection system. Its security boundary is a native GUI and per-user background helper around separately installed ClamAV and optional YARA-X binaries; version 1.0.0 does not imply security certification.
+Mars is not an externally audited endpoint-protection system. Its security boundary is a native GUI and per-user background helper around separately installed ClamAV and optional YARA-X binaries; its version number does not imply security certification.
 
 ## Design choices
 
@@ -28,6 +28,16 @@ Sanesecurity downloads use its public rsync mirror. Content authenticity is chec
 SecuriteInfo endpoints are restricted to official HTTPS signature paths. Private URLs are access-restricted local configuration, not encrypted Keychain entries. They are kept out of report metadata, exports, displayed transport logs, and process arguments, but another process with the same user privileges can read local files. Engine validation checks format, not the subscription's legal scope or signature efficacy.
 
 YARA-X has explicit file-size, enumeration, symlink, archive, and per-source runtime limits. Missing requested rules, engine errors, and candidate-list access issues must not become a clean scan result. No result is proof that the Mac is safe; a pattern match is evidence to review, not necessarily a confirmed infection.
+
+## App update boundaries in 1.1.0
+
+The app updater runs only after an explicit user action. It accepts stable release versions and exact project-owned asset URLs from the official GitHub repository, then requires a unique valid SHA-256 checksum for that exact archive. Unmatched, malformed, duplicate, or absent checksum entries are rejected.
+
+Verified archives retain macOS quarantine metadata. They are not extracted, executed, installed, or used to replace a running app by Mars; installation remains a deliberate user action in Finder. Update transport cancellation is separate from scan cancellation.
+
+The checksum and archive are both delivered through the project repository. This verifies integrity against that published manifest, not authenticity against a compromised repository account, and it is not a Developer ID signature or notarization. No OS protections are disabled by the updater.
+
+Optional source setup failures do not silently turn into a clean scan or block a healthy baseline. They become explicit skipped checks; if an optional refresh fails, its old pack is retained on disk but is not silently used by that update-before-scan run.
 
 ## Reporting a vulnerability
 

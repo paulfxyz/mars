@@ -15,21 +15,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.windows.first(where: { $0.canBecomeMain })?.setContentSize(size)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil }
-                if arguments.contains("--results") && !visible.contains(where: { $0.isSheet }) {
-                    fputs("Expected demo report sheet was not visible; refusing a misleading results screenshot.\n", stderr)
-                    exit(6)
-                }
-                let chosen = arguments.contains("--results") ? (visible.first(where: { $0.isSheet }) ?? visible.first) : visible.first
-                guard let window = chosen,
-                      let view = window.contentView,
-                      let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(3) }
-                view.cacheDisplay(in: view.bounds, to: bitmap)
-                guard let data = bitmap.representation(using: .png, properties: [:]) else { exit(4) }
-                do { try data.write(to: URL(fileURLWithPath: arguments[index + 1])); exit(0) }
-                catch { exit(5) }
+                self.capture(output: arguments[index + 1], report: arguments.contains("--results"), remainingAttempts: 40)
             }
         }
+    }
+    private func containsReport(_ view: NSView) -> Bool {
+        if view.identifier?.rawValue == "mars-rendered-report" && !view.isHiddenOrHasHiddenAncestor { return true }
+        return view.subviews.contains(where: containsReport)
+    }
+    private func capture(output: String, report: Bool, remainingAttempts: Int) {
+        let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil }
+        let reportWindow = visible.first { $0.contentView.map(containsReport) == true }
+        if report && reportWindow == nil {
+            if remainingAttempts > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.capture(output: output, report: true, remainingAttempts: remainingAttempts - 1) }
+                return
+            }
+            for window in visible { fputs("Visible window: \(window.title), sheet=\(window.isSheet), frame=\(window.frame)\n", stderr) }
+            fputs("Actual report content was not rendered; refusing a misleading results screenshot.\n", stderr)
+            exit(6)
+        }
+        guard let window = report ? reportWindow : visible.first,
+              let view = window.contentView,
+              let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(3) }
+        view.layoutSubtreeIfNeeded()
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { exit(4) }
+        do { try data.write(to: URL(fileURLWithPath: output)); exit(0) }
+        catch { exit(5) }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if model?.appUpdateBusy == true { model?.cancelAppUpdate() }

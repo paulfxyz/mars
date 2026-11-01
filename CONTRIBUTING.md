@@ -23,6 +23,10 @@ Use `dist/Mars.app/Contents/MacOS/mars --demo` for synthetic visual review after
 
 ## Release
 
-Increment the app version consistently in the packaging script, About panel, Settings, README, changelog, workflow release target, and release notes. Run the native CI suite, verify both binary architectures and signatures, inspect screenshots, and download the generated archive to check its SHA-256 checksum.
+Set the version in `scripts/package.sh` and `AppVersion.fallback` for unbundled development. The packaged About panel and Settings read Info.plist; the release workflow derives its tag and filenames from the packaging version. Keep README, changelog, and release notes synchronized.
+
+Run the native CI suite, verify both binary architectures and signatures, inspect screenshots, and download the generated archive to check its SHA-256 checksum. GitHub's [macOS 14 retirement notice](https://github.com/actions/runner-images/issues/13518) schedules full retirement for November 2, 2026; current validation therefore uses macOS 15 rather than a brownout-affected image.
+
+Regression scenarios must include legacy enabled-but-unconfigured optional sources, default update-before-scan behavior, official-only Settings updates, first-use source activation, and failure explanations. The deterministic official-refresh seam is internal to tests; actual clamscan/YARA-X fixtures still run on native macOS. Live app-update tests download an official release, verify its checksum, and inspect quarantine metadata without extracting or executing it.
 
 Do not replace published release assets in place. Releases must clearly disclose missing notarization, unaudited status, and hands-on permissions, real installation, sleep/wake scheduling, and detection acceptance limits; a 1.0 version number does not remove those limits.
