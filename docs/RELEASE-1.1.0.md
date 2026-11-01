@@ -1,5 +1,7 @@
 # Mars 1.1.0
 
+> Superseded by [Mars 1.1.1](https://github.com/paulfxyz/mars/releases/tag/v1.1.1), which fixes stale source-card errors, adds an empty private subscription configuration, and removes the unreliable automatic Sanesecurity integration. Use Settings → Check for app updates to upgrade.
+
 Fixes the scan and Settings failure caused by an enabled but unconfigured SecuriteInfo source. Adds manual in-app update checks and integrity-verified downloads.
 
 ## Fixed

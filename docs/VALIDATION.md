@@ -2,7 +2,17 @@
 
 This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
 
-## Mars 1.1.0 regression coverage
+## Mars 1.1.1 source setup coverage
+
+The [native macOS 15 validation run](https://github.com/paulfxyz/mars/actions/runs/41335664125) passed **62 tests, zero failures, zero skips**. It packaged and architecture-checked the universal app/helper, verified the ad-hoc signature, and produced twelve native screenshots. The tested Swift source is `93c4d85`; subsequent documentation and screenshot updates do not change that Swift source.
+
+All twelve native captures were visually reviewed. The new subscription-setup view shows SecuriteInfo disabled with neutral configuration guidance, no red missing-file error, and no automatic Sanesecurity card. The downloaded app archive independently passed its SHA-256 manifest check.
+
+Nine configuration-state tests cover creation of the empty 0600 file, repeated preparation without overwriting URLs, stale-error cleanup, whitespace-only input, preservation of genuine nonempty configuration errors, validation reset on changed URLs, persisted migration that cannot revive an old enabled flag, real optional failure reporting, and retirement without deletion of old Sanesecurity files or reports.
+
+The previous scan regressions now assert that a legacy empty subscription is disabled and the real ClamAV baseline completes with no subscription warning. Explicit requests with malformed nonempty input still produce a real failure; they are not hidden. Automatic Sanesecurity transport/key code and its two tests were removed together, not skipped to make a broken feature look successful.
+
+## Historical Mars 1.1.0 regression coverage
 
 The [native macOS 15 validation run](https://github.com/paulfxyz/mars/actions/runs/41330001643) executed **55 tests: 54 passed, one live provider-connectivity test skipped, zero failures**. It built and architecture-checked the universal app and helper, verified the ad-hoc signature, and captured eleven native views. Tested Swift source is `5489560`; the subsequent documentation and capture refresh does not change that Swift source.
 
@@ -14,7 +24,7 @@ Additional checks cover terms acceptance without activation, disabling legacy br
 
 Updater checks cover numeric versions, stable-release parsing, exact official repository URLs, missing/duplicate checksums, tamper rejection, cancellation, and a live published-release download with SHA-256 verification and macOS quarantine metadata. They never install or execute the downloaded app.
 
-The live Sanesecurity test permits at most three attempts for provider **transport failures only**. Signature, loading, and assertion failures still fail CI. If transport remains unavailable, the test verifies that nothing was activated and is explicitly marked **skipped**, not passed; the live vendor verification is not established on that run. This acknowledges mirror variability without bypassing integrity checks. macOS 15 is the native runner, replacing the retiring macOS 14 image.
+In 1.1.0, the live Sanesecurity test permitted three attempts for transport failures before explicitly reporting a skip. That evidence did not establish reliable connectivity on the user's Mac. In 1.1.1, the automatic integration is removed rather than continuing to ship that failing capability.
 
 Screenshots use LaunchServices to open the actual packaged app. If the headless CI launch has no initial scene window, the app hosts its exact production `RootView` in a native `NSWindow`; there is no alternative mock interface. Captures reject menu-bar-only windows and require an actual rendered report for result images.
 

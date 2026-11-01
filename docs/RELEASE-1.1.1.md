@@ -20,4 +20,10 @@ ClamAV, optional YARA-X, pinned Elastic Mac rules, local imports, manual app-upd
 
 In Mars 1.1.0, use **Settings → Check for app updates**, then download and verify the ZIP. Quit Mars, extract it, and replace Mars.app in Applications. Keep your existing local data; re-save your schedule if you use background scans. Installation remains manual, and the community app remains ad-hoc signed and unnotarized.
 
+## Validation
+
+The [native macOS 15 run](https://github.com/paulfxyz/mars/actions/runs/41335664125) passed **62 tests with zero failures and zero skips**, including nine new setup/migration tests, real ClamAV/YARA-X fixtures, live pinned Elastic updates, and the live app-update checksum/quarantine test. Universal app/helper architecture checks and ad-hoc signature verification passed.
+
+Twelve actual native captures were visually reviewed, including the new clean SecuriteInfo setup state, and the downloaded archive checksum was independently verified. Tests for the removed Sanesecurity integration were removed with its implementation, not silently skipped.
+
 Native validation and its limits are recorded in the [validation notes](https://github.com/paulfxyz/mars/blob/main/docs/VALIDATION.md). Hands-on scanning, permissions, and scheduling on your own Mac still require acceptance.

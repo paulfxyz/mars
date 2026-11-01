@@ -20,6 +20,12 @@ ClamAV remains the baseline, with optional YARA-X inclusion and source-by-source
 
 <img src="screenshot-sources.png" width="100%" alt="Mars native two-engine and detection source controls">
 
+## Configure an optional subscription
+
+In 1.1.1, SecuriteInfo starts disabled with an empty private configuration file and a neutral Configure sources prompt. Missing configuration is not rendered as a red error. The unreliable automatic Sanesecurity integration no longer appears in this list.
+
+<img src="screenshot-subscription-setup.png" width="100%" alt="Mars SecuriteInfo card showing disabled not-configured status and a Configure sources button without a missing-file error">
+
 ## During a scan
 
 Plain-language stages, honest counters, elapsed time, safe stopping, and an expandable read-only terminal stay together. Synthetic progress does not imply that a real machine was scanned.
@@ -32,9 +38,9 @@ The report explains what a match means, identifies its engine/source, lists cove
 
 <img src="screenshot-results.png" width="100%" alt="Mars native results sheet with interpretation, source attribution, and safe actions">
 
-## Optional source unavailable
+## Historical optional-source report example
 
-A completed ClamAV baseline is distinguished from optional checks that did not run. This synthetic reproduction of the 1.0.0 missing-subscription issue shows the repaired result: the baseline finishes, the source is identified as skipped, and setup guidance remains visible.
+A completed ClamAV baseline is distinguished from optional checks that did not run. This deliberately historical synthetic report illustrates the older skipped-source result; in 1.1.1 an empty subscription is automatically disabled and does not generate this warning. Configured sources with real failures can still produce incomplete-coverage reports.
 
 <img src="screenshot-optional-source.png" width="100%" alt="Mars report showing a finished baseline with an unconfigured optional source skipped">
 

@@ -70,6 +70,12 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 
 Explore the [native screenshot gallery](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
 
+<details>
+<summary>Optional means optional: configure SecuriteInfo only if you use it</summary>
+<p>An empty configuration is a normal disabled state, not an error. No subscription is required for the ClamAV baseline.</p>
+<img src="docs/screenshot-subscription-setup.png" width="100%" alt="Mars SecuriteInfo source disabled with neutral Not configured guidance and a Configure sources button">
+</details>
+
 ## Detection sources, not a mystery bundle
 
 All unofficial sources are opt-in. Mars stages each update, validates it with the target engine, then activates it under the cross-process scan lock; a previous validated copy remains available for rollback. A successful compilation or authentication check does not establish detection accuracy.
