@@ -57,7 +57,12 @@ final class AppModel: ObservableObject {
 
     init() {
         if !demo {
-            do { try storage.prepare() }
+            do {
+                try storage.prepare()
+                // If a background scan holds the lock, its own entry point
+                // handles migration. Opening the app must not interrupt it.
+                if let lock = try? OperationLock(storage: storage) { withExtendedLifetime(lock) {} }
+            }
             catch { self.error = "Could not prepare Mars's local data: \(error.localizedDescription)" }
         }
         preferences = storage.preferences()

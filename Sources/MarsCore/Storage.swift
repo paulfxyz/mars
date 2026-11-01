@@ -102,6 +102,11 @@ public final class OperationLock {
             close(descriptor); descriptor = -1
             throw MarsError.message("Another mars scan or definition update is already running. Try again when it finishes.")
         }
+        do { try storage.migrateSourceConfigurationUnlocked() }
+        catch {
+            flock(descriptor, LOCK_UN); close(descriptor); descriptor = -1
+            throw error
+        }
     }
     deinit { if descriptor >= 0 { flock(descriptor, LOCK_UN); close(descriptor) } }
 }

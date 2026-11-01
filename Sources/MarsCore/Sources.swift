@@ -68,6 +68,9 @@ extension Storage {
             if value.kind == .securiteinfo && privateFeedsNeedConfiguration {
                 value.enabled = false
                 value.lastError = nil
+                value.updated = nil
+                value.revision = nil
+                value.files = 0
             }
             return value
         }
@@ -75,6 +78,14 @@ extension Storage {
     public func saveSources(_ sources: [DetectionSource]) throws {
         try prepare()
         try JSONEncoder().encode(sources).write(to: sourceSettings, options: .atomic)
+    }
+    /// Called only after the shared operation lock has been acquired. Persist
+    /// effective retirement/setup state so old enabled flags cannot revive later.
+    func migrateSourceConfigurationUnlocked() throws {
+        guard let data = try? Data(contentsOf: sourceSettings),
+              let stored = try? JSONDecoder().decode([DetectionSource].self, from: data) else { return }
+        let migrated = sources()
+        if migrated != stored { try saveSources(migrated) }
     }
     public func sourceDirectory(_ id: String) -> URL {
         // Only internal IDs are accepted, not arbitrary relative paths from an imported settings file.

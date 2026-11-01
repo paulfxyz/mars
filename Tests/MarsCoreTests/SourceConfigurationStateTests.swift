@@ -78,6 +78,21 @@ final class SourceConfigurationStateTests: XCTestCase {
         XCTAssertEqual(issues.count, 1)
         XCTAssertNotNil(storage.sources().first { $0.kind == .securiteinfo }?.lastError)
     }
+    func testMigrationPersistsDisabledStateAndCannotReviveAnOldEnabledFlag() throws {
+        let storage = try storage()
+        var source = try XCTUnwrap(Catalog.defaults.first { $0.kind == .securiteinfo })
+        source.enabled = true; source.acceptedTerms = true
+        source.updated = Date(); source.files = 1; source.lastError = "Stale missing-file error"
+        try storage.saveSources([source])
+        do { let lock = try OperationLock(storage: storage); withExtendedLifetime(lock) {} }
+        let persisted = try JSONDecoder().decode([DetectionSource].self, from: Data(contentsOf: storage.sourceSettings))
+        let migrated = try XCTUnwrap(persisted.first { $0.kind == .securiteinfo })
+        XCTAssertFalse(migrated.enabled)
+        XCTAssertNil(migrated.updated)
+        XCTAssertNil(migrated.lastError)
+        try Data("https://www.securiteinfo.com/get/signatures/private-fixture/test.ndb".utf8).write(to: storage.privateFeeds())
+        XCTAssertFalse(try XCTUnwrap(storage.sources().first { $0.kind == .securiteinfo }).enabled)
+    }
     func testRetiredSanesecurityCannotRunButItsFilesAndHistoryArePreserved() throws {
         let storage = try storage()
         var source = DetectionSource(id: "sanesecurity", name: "Sanesecurity", engine: .clamav,
