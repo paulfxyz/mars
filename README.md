@@ -21,7 +21,7 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 
 ## Install and get started
 
-1. Download **Mars-1.1.0-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
+1. Download **Mars-1.1.1-macOS-universal.zip** from [Releases](https://github.com/paulfxyz/mars/releases).
 2. Extract it, move **Mars.app** to Applications, then open it.
 3. Choose **Set up Mars**. Confirm installation of ClamAV through Homebrew; Mars then downloads the official definitions. If Homebrew is missing, Mars offers to open its official installer in a visible Terminal window first.
 4. Choose **Scan**, select a location, and scan. For wider coverage, grant Full Disk Access in macOS Settings.
@@ -41,12 +41,12 @@ The Roman god of war lends his name, not a promise of invincibility. Mars is an 
 - **Non-destructive by default and by design:** Reveal a flagged file in Finder and export a JSON report. No automatic deletion, relocation, or quarantine.
 - **No fake progress:** An indeterminate activity indicator and live engine output, not an invented completion percentage.
 - **Two local engines:** ClamAV baseline scanning and optional YARA-X raw-file rule analysis. Engine and source appear on each finding; repeated source-pass counts are not added together as unique files.
-- **Selectable sources:** Official ClamAV, a pinned four-file Elastic Mac starter pack, GPG-verified Sanesecurity malware hashes, user-owned SecuriteInfo feeds, and trusted local imports for both engines.
+- **Selectable sources:** Official ClamAV, a pinned four-file Elastic Mac starter pack, user-owned SecuriteInfo feeds, and trusted local imports for both engines.
 - **Understandable scanning:** Plain-language stages, observed counts, elapsed time, safe stopping, and an expandable dark read-only terminal.
 - **Results that help:** Explanations, coverage gaps, source-by-source status, recommended next steps, Finder reveal, copy path, report export, and explicit preparation of a new scan.
 - **App updates inside Mars:** Manual stable-release checks and SHA-256 verified ZIP downloads, with preserved macOS quarantine metadata. Installation remains an explicit Finder replacement, not a silent app swap or restart.
 
-Version 1.1.0 fixes a 1.0.0 regression where enabling SecuriteInfo without configuring a subscription blocked both scanning and Settings updates. Existing profiles are preserved: official ClamAV scanning continues and unavailable optional checks are reported as skipped, not silently treated as clean.
+Version 1.1.1 creates an empty private SecuriteInfo configuration on first launch, preserves existing URLs, and leaves unconfigured subscriptions off with neutral setup guidance instead of stale errors. Unreliable automatic Sanesecurity downloads have been removed, including legacy enabled profiles; existing local files and historical reports are retained.
 
 <img src="docs/screenshot-overview.png" width="100%" alt="Mars native overview with illustrative scan history, engine status, definition freshness, and the manga guardian">
 
@@ -65,7 +65,7 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 <details>
 <summary>App updates, without surprise installations</summary>
 <p>Settings can check the official stable release and download its exact ZIP with SHA-256 integrity verification. Installation remains an explicit Finder replacement, and normal macOS approval is preserved.</p>
-<img src="docs/screenshot-settings.png" width="100%" alt="Mars 1.1.0 Settings with manual app update checking and official ClamAV definition controls">
+<img src="docs/screenshot-settings.png" width="100%" alt="Mars Settings with manual app update checking and official ClamAV definition controls">
 </details>
 
 Explore the [native screenshot gallery](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
@@ -76,8 +76,7 @@ All unofficial sources are opt-in. Mars stages each update, validates it with th
 
 - **Official ClamAV:** FreshClam maintains the baseline database.
 - **Elastic Mac starter rules:** Four selected malware-family rule files, plus their license, are fetched directly from a pinned Elastic commit and must match pinned SHA-256 hashes. This is a small starter collection, not all Mac malware detection, and its [Elastic License 2.0](https://github.com/elastic/protections-artifacts/blob/main/LICENSE.txt) is separate from Mars's MIT license.
-- **Sanesecurity:** Malware hashes, file-type definitions, and the provider's false-positive allowlist are fetched using the provider's rsync mirror and checked with the pinned public GPG key. Requires GnuPG and working rsync connectivity; [provider terms and signature details](https://sanesecurity.com/usage/signatures/) apply.
-- **SecuriteInfo:** Add your own authorized official HTTPS download URLs. Mars neither supplies a subscription nor redistributes paid definitions; the provider says Basic is for installation validation rather than useful protection. See [the provider FAQ](https://www.securiteinfo.com/clamav-antivirus/faq-clamav-unofficial-signatures_en.shtml).
+- **SecuriteInfo:** Optional and disabled until configured, validated, and explicitly enabled. Mars creates an empty private `.txt` file without overwriting existing URLs; an empty list is a normal setup state, not an error. Add your own authorized official HTTPS download URLs. Mars neither supplies a subscription nor redistributes paid definitions; see [the provider FAQ](https://www.securiteinfo.com/clamav-antivirus/faq-clamav-unofficial-signatures_en.shtml).
 - **Local imports:** Add trusted ClamAV definitions, ClamAV-compatible standalone YARA, or YARA-X rules. Includes and compiled YARA are rejected; engine compilation/loading must succeed before activation. Imports do not update automatically and retain their own licenses.
 
 YARA-X is a separate pattern-matching engine with a [BSD-3-Clause license and Homebrew package](https://formulae.brew.sh/formula/yara-x), not a source of automatically licensed rules. Mars scans raw candidate files up to 32 MiB, with a 500,000-file enumeration cap, no symlink following, and a one-hour per-source timeout. Archives are not unpacked by this second engine; ClamAV's baseline archive inspection remains separate. Coverage limitations are surfaced rather than silently counted as clean.
@@ -133,7 +132,7 @@ swift run mars
 For engine integration tests and a universal app bundle:
 
 ```sh
-brew install clamav yara-x gnupg rsync
+brew install clamav yara-x
 MARS_CLAMAV_TESTS=1 swift test
 bash scripts/package.sh
 open dist/Mars.app

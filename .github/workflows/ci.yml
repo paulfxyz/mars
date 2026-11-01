@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install test engine
-        run: brew install clamav yara-x gnupg rsync
+        run: brew install clamav yara-x
       - name: Package universal native app
         run: bash scripts/package.sh
       - name: Capture native interface with synthetic data
@@ -44,6 +44,7 @@ jobs:
           capture overview-dark --dark
           capture overview-compact --compact
           capture sources --sources
+          capture subscription-setup --sources --subscription-setup
           capture scanning --scanning
           capture results --results
           capture optional-source --results --skipped-source

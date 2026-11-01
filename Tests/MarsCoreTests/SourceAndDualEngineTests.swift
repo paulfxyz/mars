@@ -25,9 +25,9 @@ final class SourceAndDualEngineTests: XCTestCase {
         XCTAssertTrue(Interpretation.summary(decoded).contains("could not complete"))
     }
     func testUnofficialSourcesAreOptIn() {
-        XCTAssertEqual(Catalog.defaults.count, 3)
+        XCTAssertEqual(Catalog.defaults.count, 2)
         XCTAssertTrue(Catalog.defaults.allSatisfy { !$0.enabled && !$0.acceptedTerms })
-        XCTAssertEqual(Set(Catalog.defaults.map(\.id)).count, 3)
+        XCTAssertEqual(Set(Catalog.defaults.map(\.id)).count, 2)
     }
     func testTamperedPinnedDownloadIsRejected() {
         XCTAssertThrowsError(try Catalog.check(Data("tampered".utf8), expected: String(repeating: "0", count: 64)))
@@ -104,19 +104,6 @@ final class SourceAndDualEngineTests: XCTestCase {
         record.outcome = .completed
         XCTAssertTrue(Interpretation.summary(record).contains("does not prove"))
     }
-    func testPinnedSanesecurityKeyBuildsIsolatedVerificationKeyring() throws {
-        try engines()
-        let gpg = try XCTUnwrap(Engine.executable("gpg")), storage = try storage()
-        let key = storage.root.appendingPathComponent("vendor.asc")
-        try Data(SourceManager.sanesecurityKey.utf8).write(to: key)
-        let ring = storage.root.appendingPathComponent("vendor.gpg")
-        let result = try ProcessRunner.run(gpg, ["--no-options", "--homedir", storage.root.path, "--batch", "--dearmor", "--output", ring.path, key.path])
-        XCTAssertEqual(result, 0)
-        var fingerprints = ""
-        let inspect = try ProcessRunner.run(gpg, ["--no-options", "--homedir", storage.root.path, "--batch", "--show-keys", "--with-colons", ring.path]) { fingerprints += $0 }
-        XCTAssertEqual(inspect, 0)
-        XCTAssertTrue(fingerprints.contains("4E025A1CBA90A0653F38D2D8D691DED931EA4D9E"))
-    }
     func testRealDualEnginePipelineAndSourceAttribution() throws {
         try engines()
         let storage = try storage()
@@ -176,35 +163,6 @@ final class SourceAndDualEngineTests: XCTestCase {
         XCTAssertEqual(storage.sources()[0].files, 4)
         XCTAssertEqual(storage.sources()[0].revision, Catalog.elasticRevision)
         XCTAssertTrue(FileManager.default.fileExists(atPath: storage.activeSource("elastic-mac").appendingPathComponent("LICENSE.txt").path))
-    }
-    func testLiveSanesecurityDownloadVerifyAndLoad() throws {
-        guard ProcessInfo.processInfo.environment["MARS_SOURCE_NETWORK_TESTS"] == "1" else { throw XCTSkip("Opt-in network source verification.") }
-        try engines()
-        let storage = try storage()
-        var sources = Catalog.defaults
-        sources[1].acceptedTerms = true
-        try storage.saveSources(sources)
-        // The provider's DNS rotates rsync mirrors. Retry only transport
-        // failures; never retry away a signature, engine, or assertion failure.
-        for attempt in 1...3 {
-            do {
-                try SourceManager(storage: storage).update(id: "sanesecurity", cancellation: Cancellation()) { _ in }
-                break
-            } catch {
-                guard error.localizedDescription.hasPrefix("Sanesecurity transport failed") else { throw error }
-                if attempt == 3 {
-                    let source = try XCTUnwrap(storage.sources().first { $0.id == "sanesecurity" })
-                    XCTAssertNil(source.updated, "A failed transport must never activate unverified data")
-                    XCTAssertFalse(FileManager.default.fileExists(atPath: storage.activeSource("sanesecurity").path))
-                    throw XCTSkip("Provider rsync transport unavailable after three attempts. Live vendor verification was NOT established; no data was activated.")
-                }
-                print("Sanesecurity live transport attempt \(attempt) failed; retrying the provider mirror.")
-            }
-        }
-        let source = try XCTUnwrap(storage.sources().first { $0.id == "sanesecurity" })
-        XCTAssertEqual(source.files, 4)
-        XCTAssertTrue(source.revision?.contains("signed payload dates") == true)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: storage.activeSource("sanesecurity").appendingPathComponent("rogue.hdb").path))
     }
     func testTransportDeadlineDoesNotPretendUserCancelled() throws {
         let token = Cancellation(), start = Date()

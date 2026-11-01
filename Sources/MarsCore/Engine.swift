@@ -111,11 +111,10 @@ public struct Engine {
             cancellation: cancellation, line: line)
     }
     public func installOptional(package: String, cancellation: Cancellation, line: (String) -> Void) throws {
-        guard ["yara-x", "gnupg"].contains(package), let brew = Self.brew else { throw MarsError.message("Homebrew is required for this optional component.") }
+        guard package == "yara-x", let brew = Self.brew else { throw MarsError.message("Homebrew is required for the optional YARA-X engine.") }
         let operationLock = try OperationLock(storage: storage)
         defer { withExtendedLifetime(operationLock) {} }
-        let packages = package == "gnupg" ? ["gnupg", "rsync"] : [package]
-        let code = try ProcessRunner.run(brew, ["install"] + packages, cancellation: cancellation, line: line)
+        let code = try ProcessRunner.run(brew, ["install", package], cancellation: cancellation, line: line)
         guard code == 0 else { throw MarsError.message("Optional component installation did not finish. Check the console. On older macOS or Intel, Homebrew may need to build from source or may not support the current formula.") }
     }
     private func updateUnlocked(cancellation: Cancellation, line: (String) -> Void) throws {

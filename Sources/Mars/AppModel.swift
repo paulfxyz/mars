@@ -56,6 +56,10 @@ final class AppModel: ObservableObject {
     }
 
     init() {
+        if !demo {
+            do { try storage.prepare() }
+            catch { self.error = "Could not prepare Mars's local data: \(error.localizedDescription)" }
+        }
         preferences = storage.preferences()
         savedPreferences = preferences
         refresh()
@@ -312,9 +316,7 @@ final class AppModel: ObservableObject {
             let operationLock = try OperationLock(storage: storage)
             defer { withExtendedLifetime(operationLock) {} }
             try storage.setPrivateFeeds(text)
-            var values = storage.sources()
-            if let index = values.firstIndex(where: { $0.kind == .securiteinfo }) { values[index].lastError = nil }
-            try storage.saveSources(values)
+            optionalUpdateWarnings = []
             refresh(); showPrivateFeedSetup = false
         } catch { self.error = error.localizedDescription }
     }

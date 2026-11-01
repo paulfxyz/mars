@@ -18,6 +18,16 @@ public struct Storage {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
         }
+        // Optional subscription setup is a real empty, private file, not a
+        // missing-file error. Never truncate an existing user's configuration.
+        if !FileManager.default.fileExists(atPath: privateFeeds().path) {
+            do {
+                try Data().write(to: privateFeeds(), options: .withoutOverwriting)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: privateFeeds().path)
+            } catch let error as CocoaError where error.code == .fileWriteFileExists {
+                // Another Mars process created it between the check and write.
+            }
+        }
     }
     public func preferences() -> Preferences {
         guard let data = try? Data(contentsOf: preferencesURL),

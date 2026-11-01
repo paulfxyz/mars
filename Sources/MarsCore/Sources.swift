@@ -26,7 +26,7 @@ public struct DetectionSource: Codable, Identifiable, Equatable {
     public var explanation: String {
         switch kind {
         case .elastic: return "Four curated Mac malware rule files from Elastic Security, pinned to a reviewed commit and SHA-256 hashes. Not a comprehensive Mac threat database."
-        case .sanesecurity: return "Malware hashes (rogue and malwarehash) plus required file-type and false-positive allowlist files. Downloads use rsync and must pass verification against the pinned provider key. Signed payload dates are shown separately from download time."
+        case .sanesecurity: return "Legacy source: automatic Sanesecurity downloads have been removed. Trusted definitions can still be imported manually."
         case .securiteinfo: return "Your own licensed HTTPS signature URLs. Paid access may be required; free Basic is intended for installation validation. No subscription or credentials are shared by Mars."
         case .local: return "User-imported rules or definitions. You are responsible for their provenance, license, quality, and future refreshes."
         }
@@ -45,8 +45,6 @@ public enum Catalog {
         [
             DetectionSource(id: "elastic-mac", name: "Elastic Mac starter rules", engine: .yaraX, kind: .elastic,
                             license: "Elastic License 2.0; separate from Mars MIT", origin: "https://github.com/elastic/protections-artifacts"),
-            DetectionSource(id: "sanesecurity", name: "Sanesecurity malware hashes", engine: .clamav, kind: .sanesecurity,
-                            license: "Provider terms; review before enabling", origin: "https://sanesecurity.com/usage/signatures/"),
             DetectionSource(id: "securiteinfo", name: "SecuriteInfo subscription", engine: .clamav, kind: .securiteinfo,
                             license: "Your subscription terms; no redistribution", origin: "https://www.securiteinfo.com/clamav-antivirus/faq-clamav-unofficial-signatures_en.shtml")
         ]
@@ -62,7 +60,17 @@ extension Storage {
     public var sourceSettings: URL { root.appendingPathComponent("sources.json") }
     public func sources() -> [DetectionSource] {
         guard let data = try? Data(contentsOf: sourceSettings), let stored = try? JSONDecoder().decode([DetectionSource].self, from: data) else { return Catalog.defaults }
-        return stored + Catalog.defaults.filter { base in !stored.contains { $0.id == base.id } }
+        // Retire the unreliable automatic rsync integration, including legacy
+        // enabled profiles. Keep downloaded files and historical reports intact.
+        let supported = stored.filter { $0.kind != .sanesecurity }
+        return (supported + Catalog.defaults.filter { base in !supported.contains { $0.id == base.id } }).map { source in
+            var value = source
+            if value.kind == .securiteinfo && privateFeedsNeedConfiguration {
+                value.enabled = false
+                value.lastError = nil
+            }
+            return value
+        }
     }
     public func saveSources(_ sources: [DetectionSource]) throws {
         try prepare()
@@ -75,12 +83,28 @@ extension Storage {
     }
     public func activeSource(_ id: String) -> URL { sourceDirectory(id).appendingPathComponent("active", isDirectory: true) }
     public func privateFeeds() -> URL { root.appendingPathComponent("private-securiteinfo-urls.txt") }
+    public var privateFeedsNeedConfiguration: Bool {
+        if !FileManager.default.fileExists(atPath: privateFeeds().path) { return true }
+        // Unreadable or malformed nonempty input is a real issue, not "empty".
+        guard let text = try? String(contentsOf: privateFeeds()) else { return false }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     public func setPrivateFeeds(_ text: String) throws {
         let urls = try SourceManager.validateFeedURLs(text)
         try prepare()
         let data = Data(urls.map(\.absoluteString).joined(separator: "\n").utf8)
         try data.write(to: privateFeeds(), options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: privateFeeds().path)
+        var values = sources()
+        if let index = values.firstIndex(where: { $0.kind == .securiteinfo }) {
+            // New account URLs are not validation of the previous downloaded DB.
+            values[index].enabled = false
+            values[index].updated = nil
+            values[index].revision = nil
+            values[index].files = 0
+            values[index].lastError = nil
+        }
+        try saveSources(values)
     }
 }
 
@@ -95,7 +119,7 @@ public struct SourceManager {
     public var storage: Storage
     public init(storage: Storage = Storage()) { self.storage = storage }
     public func subscriptionURLs() throws -> [URL] {
-        guard FileManager.default.fileExists(atPath: storage.privateFeeds().path) else {
+        guard !storage.privateFeedsNeedConfiguration else {
             throw MarsError.message("No SecuriteInfo subscription URLs are configured. In Detection Sources, configure your own private feed URLs, update and validate the source, then enable it. ClamAV does not require this subscription.")
         }
         let text: String
@@ -104,6 +128,10 @@ public struct SourceManager {
         return try Self.validateFeedURLs(text)
     }
     public func setupIssue(for source: DetectionSource, requireActive: Bool) -> String? {
+        if source.kind == .sanesecurity { return "Automatic Sanesecurity downloads have been removed. You can still import trusted definitions manually." }
+        if source.kind == .securiteinfo && storage.privateFeedsNeedConfiguration {
+            return "Not configured. Add your own private signature URLs, accept the provider terms, then update and validate to enable this optional source. ClamAV does not need a subscription."
+        }
         if !source.acceptedTerms { return "Review and accept this provider's terms first. Acceptance does not enable the source." }
         // Configuration is checked before any private-file read, download, or engine work.
         if source.kind == .securiteinfo {
@@ -111,9 +139,6 @@ public struct SourceManager {
         }
         if source.engine == .yaraX && !Engine.yaraXInstalled { return "Install YARA-X in Detection Sources before using this rule source." }
         if source.engine == .clamav && !Engine.installed { return "Install ClamAV before using this definition source." }
-        if source.kind == .sanesecurity && !requireActive && Engine.executable("gpg") == nil {
-            return "Install verification tools in Detection Sources before updating Sanesecurity."
-        }
         if requireActive && (source.updated == nil || !FileManager.default.fileExists(atPath: storage.activeSource(source.id).path)) {
             return "Update & validate this source before enabling it. No validated active definitions are available."
         }
@@ -297,8 +322,7 @@ public struct SourceManager {
                 try Catalog.check(Data(contentsOf: license), expected: "48255018b41fc0e965b1115af7e6779bc218bb8a6747d561da800d5022622aa2")
                 source.files = Catalog.elasticFiles.count; source.revision = Catalog.elasticRevision
             case .sanesecurity:
-                let dates = try downloadSanesecurity(stage: stage, cancellation: cancellation, line: line)
-                source.files = 4; source.revision = "GPG verified; signed payload dates: \(dates.joined(separator: " · ")). Download time does not establish freshness."
+                throw MarsError.message("Automatic Sanesecurity downloads have been removed. Import trusted definitions manually instead.")
             case .securiteinfo:
                 let urls = try subscriptionURLs()
                 for (offset, url) in urls.enumerated() {
@@ -321,75 +345,4 @@ public struct SourceManager {
             throw error
         }
     }
-    private func downloadSanesecurity(stage: URL, cancellation: Cancellation, line: (String) -> Void) throws -> [String] {
-        guard let gpg = Engine.executable("gpg") else { throw MarsError.message("Sanesecurity requires GnuPG. Use Install verification tools in Detection Sources.") }
-        let home = stage.deletingLastPathComponent().appendingPathComponent("gpg-\(UUID())")
-        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
-        defer { try? FileManager.default.removeItem(at: home) }
-        let key = home.appendingPathComponent("vendor.asc")
-        try Data(Self.sanesecurityKey.utf8).write(to: key)
-        let ring = home.appendingPathComponent("vendor.gpg")
-        guard try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--dearmor", "--output", ring.path, key.path], cancellation: cancellation) == 0 else {
-            throw MarsError.message("Could not load the pinned Sanesecurity verification key.")
-        }
-        var dates: [String] = []
-        for file in ["rogue.hdb", "malwarehash.hsb", "sigwhitelist.ign2", "sanesecurity.ftm"] {
-            for name in [file, "\(file).sig"] {
-                var details: [String] = []
-                // macOS's built-in rsync can be 2.6.x; --contimeout is not supported there.
-                let code = try ProcessRunner.run(Engine.executable("rsync") ?? "/usr/bin/rsync", ["--timeout=30", "--max-size=100000000",
-                    "rsync://rsync.sanesecurity.net/sanesecurity/\(name)", stage.appendingPathComponent(name).path], cancellation: cancellation, timeout: 45) { details.append($0) }
-                guard code == 0 else { throw MarsError.message("Sanesecurity transport failed (exit \(code)): \(details.suffix(3).joined(separator: " ")). Previous signatures remain unchanged.") }
-            }
-            var verified = false
-            var signedDate = "date not reported"
-            let code = try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--no-default-keyring",
-                "--keyring", ring.path, "--trust-model", "always", "--no-auto-key-retrieve", "--no-autostart",
-                "--status-fd", "1", "--verify", stage.appendingPathComponent("\(file).sig").path,
-                stage.appendingPathComponent(file).path], cancellation: cancellation) { text in
-                    if text.contains("[GNUPG:] VALIDSIG ") {
-                        verified = true
-                        let fields = text.split(separator: " ")
-                        if fields.count > 3 { signedDate = String(fields[3]) }
-                    }
-                }
-            guard code == 0 && verified else { throw MarsError.message("Sanesecurity GPG verification failed. Nothing was activated.") }
-            try FileManager.default.removeItem(at: stage.appendingPathComponent("\(file).sig"))
-            dates.append("\(file): \(signedDate)")
-            line("Verified \(file) against the pinned provider key; payload signed \(signedDate).")
-        }
-        return dates
-    }
-    static let sanesecurityKey = """
-    -----BEGIN PGP PUBLIC KEY BLOCK-----
-    Version: GnuPG v1.4.9 (MingW32)
-
-    mQGiBElnAKcRBACX5ELfVPeAubJaQDQZHF8fGZFVkmT54J2uj0UwLfxbN5dQ4jEr
-    Pxdr0UiqOA0cttKpe0m6IZHnkbeeY4s0/HpaVZKGXsiizazB4F2NdzskuT4TRGXg
-    fAMQ16mlpslY//quEfIQzTSKPhEKpVHqZTn8wjSDZQo+NI3qmBODz9p5HwCggFoi
-    p2/LpvjmLkjPFKNpyjOwt6sD/ifFA07EmF9vxOG7aXqB7Z5zB24rpXb3/KBPbF93
-    6bvbT70jlwMczdOt9eNK7brpIj/ZpkdUol84MYb7sv9ZC3+qmVFKERo1rM+kvkXV
-    jjCFBRMyBTYYB67RgkMd79gaJ3Zo9SavQW65EtFxMr5aDfbXwkshoI3EzwVSsVPv
-    MoQwA/40qOV6eXQChLet795btwhbmVWvrAZ7MaN8Gdx0hMP+a9DOGo0O4J1GeNXX
-    Prt9PLdmUb2cahqrIVDVis6KDjD3GSdgRPf8zZ6kDUteeMND4EsYytpOQl8AeL6h
-    9zncFtPng1Kj/aAJyxO38YvPMFLkQV/iyZu/0Oq8RIFp/E1ZG7RJU2FuZXNlY3Vy
-    aXR5IChTYW5lc2VjdXJpdHkgU2lnbmF0dXJlcykgPHN0ZXZlYl9jbGFtYXZAc2Fu
-    ZXNlY3VyaXR5LmNvLnVrPohgBBMRAgAgBQJJZwCnAhsDBgsJCAcDAgQVAggDBBYC
-    AwECHgECF4AACgkQ1pHe2THqTZ7mowCaA9QGSxkN6XP7dbOlrjB9aDp5D90AniNm
-    W0NT6DUEVRMLnvWvnnlfufsJuQINBElnAKcQCAC1/hC7vENr66EkX0t8FAtKKZ31
-    kMYYjUd24uXYBEL/Fwip+JDpS9xUClK70PVcJ/Ad0z4lYQRUgRcCvq5twF5clmMG
-    E7M+K5vgJtjk2Wvl+w77X6za9bu8euwkzzWeyskmUpJ78EAcwsOk28Q8VPtrI76z
-    JjLqdY3tFXkCwCLvKzfhdg+3967B4ge+XBdTCQhE6dQ+A5ePMQKZj365A8BQdHOY
-    +e/MuGH6LbB/VuqGD7kjC+gE44syY/O6X9STRufvCYwPlqkJVpuR2arFIIGcXzP0
-    GA4m8ESFY5N68QXYvzO60CqGABhFEmAtGul7ZOJgI8QLcVIPn+lghL8V9IYDAAMG
-    B/4zh/khzx4TwkiAU40nsCvgjVeNKF0frka/AXdODzf9MDyJEdrdxFSKNANS/IPJ
-    W/n0gk5khwOcNnCIAM/GMm5szJftywhmuM3vXM6l+pHLF1/FABpNCFzjQAsBDg+g
-    dIYFhE9qDbFf1ZBGuJp0fdUyKG9fkdkYX4tN0F2bM6hqAIZab1FfDQC/rRcFmA0t
-    MeQwAQCOsyva3ipRa0xoAWS8C5bpXeVZbo9ZAGw/W+MDi7atrqURB0HRKB9PZB1J
-    BLlaQgZAHILykpQEE2gelUwihZS9MadB2bEvrJcbhgxaRqarAam/rcTLrMEOWgdP
-    uPNmK1GeJrr7D6H1g5TSYYKoiEkEGBECAAkFAklnAKcCGwwACgkQ1pHe2THqTZ6C
-    vACdF31uNpoParageOrmdtOdJUKUs0cAn2DLySqry2A5FlQ/6W+7IptN02IE
-    =fh8i
-    -----END PGP PUBLIC KEY BLOCK-----
-    """
 }

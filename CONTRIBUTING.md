@@ -7,11 +7,11 @@ Mars is deliberately small: a native interface, a testable Foundation core, and 
 Use macOS 13+ and Swift 5.9+. Run `swift test` and `swift build` before opening a pull request. For real-engine fixtures, install the optional components too:
 
 ```sh
-brew install clamav yara-x gnupg rsync
+brew install clamav yara-x
 MARS_CLAMAV_TESTS=1 swift test
 ```
 
-Set `MARS_SOURCE_NETWORK_TESTS=1` as well to exercise the live pinned Elastic download and GPG-verified Sanesecurity mirror update. These tests require the relevant network access; a mirror timeout is a failure, not a skipped or silently accepted source.
+Set `MARS_SOURCE_NETWORK_TESTS=1` as well to exercise the live pinned Elastic download and the app-updater release download. Automatic Sanesecurity downloads and their network tests were removed in 1.1.1; there is no rsync or GnuPG requirement. Mandatory tests cover retirement of saved legacy profiles without deleting their files or history.
 
 The integration fixture uses a harmless custom ASCII signature database. Do not commit malware, real private scan logs, signing credentials, downloaded official databases, or user exports.
 

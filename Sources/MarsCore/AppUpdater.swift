@@ -7,7 +7,7 @@ public struct AppVersion: Comparable, Equatable, CustomStringConvertible {
     public let minor: Int
     public let patch: Int
     public var description: String { "\(major).\(minor).\(patch)" }
-    public static let fallback = "1.1.0"
+    public static let fallback = "1.1.1"
     public static var current: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? fallback }
     public init?(_ value: String) {
         let fields = value.split(separator: ".", omittingEmptySubsequences: false)

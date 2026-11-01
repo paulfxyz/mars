@@ -23,9 +23,11 @@ Unofficial sources are off by default and require explicit terms consent. Source
 
 Elastic's four selected rule files and license are pinned to an immutable commit and expected SHA-256 hashes. A reviewed Mars change is required to advance that pin; this is not a promise to track all upstream threat intelligence automatically. Local YARA imports reject any occurrence of the include keyword, including comments/strings, to conservatively prevent compiler-time reads of unrelated files. This can reject some otherwise valid rules.
 
-Sanesecurity downloads use its public rsync mirror. Content authenticity is checked against the embedded vendor key in an isolated public-key ring without starting a GPG agent. This is a legacy DSA vendor key, not a newly issued modern Mars key; pinning does not upgrade its cryptographic strength. Signed payload dates are exposed because download time is not evidence of current threat coverage.
+Automatic Sanesecurity downloads were removed in 1.1.1, together with the rsync/GPG transport code and embedded verification key. Legacy entries are excluded from current source selection. Existing files and old reports remain on disk; there is no automatic network fallback to an unauthenticated mirror.
 
 SecuriteInfo endpoints are restricted to official HTTPS signature paths. Private URLs are access-restricted local configuration, not encrypted Keychain entries. They are kept out of report metadata, exports, displayed transport logs, and process arguments, but another process with the same user privileges can read local files. Engine validation checks format, not the subscription's legal scope or signature efficacy.
+
+Preparation creates an empty 0600 configuration only if it does not exist, using no-overwrite semantics. Missing or whitespace-only configuration disables this optional source and clears stale setup errors in the effective profile; it does not hide errors for nonempty malformed configuration. Changing URLs resets validation and activation. Other source files and history are retained.
 
 YARA-X has explicit file-size, enumeration, symlink, archive, and per-source runtime limits. Missing requested rules, engine errors, and candidate-list access issues must not become a clean scan result. No result is proof that the Mac is safe; a pattern match is evidence to review, not necessarily a confirmed infection.
 

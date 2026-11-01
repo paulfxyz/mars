@@ -9,9 +9,11 @@ final class SourceSetupRegressionTests: XCTestCase {
     }
     func legacySubscription(_ storage: Storage) throws {
         var sources = Catalog.defaults
-        sources[2].acceptedTerms = true; sources[2].enabled = true
+        let index = try XCTUnwrap(sources.firstIndex { $0.kind == .securiteinfo })
+        sources[index].acceptedTerms = true; sources[index].enabled = true
+        sources[index].lastError = "The file private-securiteinfo-urls.txt could not be opened because there is no such file."
         try storage.saveSources(sources)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: storage.privateFeeds().path))
+        XCTAssertTrue(storage.privateFeedsNeedConfiguration)
     }
     func cleanFixture(_ storage: Storage) throws -> Preferences {
         guard ProcessInfo.processInfo.environment["MARS_CLAMAV_TESTS"] == "1" else { throw XCTSkip("Native ClamAV fixture is opt-in.") }
@@ -34,17 +36,18 @@ final class SourceSetupRegressionTests: XCTestCase {
         XCTAssertTrue(source.acceptedTerms)
         XCTAssertFalse(source.enabled)
         XCTAssertThrowsError(try manager.setEnabled(id: source.id, enabled: true)) { error in
-            XCTAssertTrue(error.localizedDescription.contains("No SecuriteInfo subscription URLs"))
+            XCTAssertTrue(error.localizedDescription.contains("Not configured"))
         }
         XCTAssertFalse(storage.sources().first { $0.id == source.id }!.enabled)
     }
     func testLegacyEnabledSubscriptionCanBeDisabledWithoutCredentials() throws {
         let storage = try storage(); try legacySubscription(storage)
         try SourceManager(storage: storage).setEnabled(id: "securiteinfo", enabled: false)
-        XCTAssertFalse(storage.sources()[2].enabled)
+        XCTAssertFalse(try XCTUnwrap(storage.sources().first { $0.kind == .securiteinfo }).enabled)
     }
     func testMissingPrivateFileProducesSetupGuidanceNotFileReadError() throws {
         let storage = try storage(); try legacySubscription(storage)
+        try FileManager.default.removeItem(at: storage.privateFeeds())
         XCTAssertThrowsError(try SourceManager(storage: storage).subscriptionURLs()) { error in
             XCTAssertTrue(error.localizedDescription.contains("Detection Sources"))
             XCTAssertFalse(error.localizedDescription.contains("private-securiteinfo-urls.txt"))
@@ -54,17 +57,18 @@ final class SourceSetupRegressionTests: XCTestCase {
     func testOptionalRefreshReturnsWarningInsteadOfAborting() throws {
         let storage = try storage(); try legacySubscription(storage)
         var lines: [String] = []
-        let issues = try SourceManager(storage: storage).refreshOptionalUnlocked(storage.sources().filter(\.enabled),
+        let issues = try SourceManager(storage: storage).refreshOptionalUnlocked(storage.sources().filter { $0.kind == .securiteinfo },
             cancellation: Cancellation()) { lines.append($0) }
         XCTAssertEqual(issues.count, 1)
         XCTAssertEqual(issues[0].id, "securiteinfo")
         XCTAssertTrue(lines.contains { $0.contains("baseline remains available") })
-        XCTAssertFalse(FileManager.default.fileExists(atPath: storage.privateFeeds().path))
+        XCTAssertTrue(storage.privateFeedsNeedConfiguration)
+        XCTAssertNil(storage.sources().first { $0.kind == .securiteinfo }?.lastError)
     }
     func testCancelledOptionalRefreshStillPropagatesCancellation() throws {
         let storage = try storage(); try legacySubscription(storage)
         let token = Cancellation(); token.cancel()
-        XCTAssertThrowsError(try SourceManager(storage: storage).refreshOptionalUnlocked(storage.sources().filter(\.enabled), cancellation: token) { _ in })
+        XCTAssertThrowsError(try SourceManager(storage: storage).refreshOptionalUnlocked(storage.sources().filter { $0.kind == .securiteinfo }, cancellation: token) { _ in })
     }
     func testSettingsOfficialUpdateNeverTouchesOptionalSubscription() throws {
         let storage = try storage(); try legacySubscription(storage)
@@ -72,15 +76,14 @@ final class SourceSetupRegressionTests: XCTestCase {
         let engine = Engine(storage: storage, officialUpdateOverride: { _, _ in officialCalls += 1 })
         XCTAssertNoThrow(try engine.updateOfficial(cancellation: Cancellation()) { _ in })
         XCTAssertEqual(officialCalls, 1)
-        XCTAssertNil(storage.sources()[2].lastError, "Official-only update must not attempt this optional provider")
+        XCTAssertNil(storage.sources().first { $0.kind == .securiteinfo }?.lastError, "Official-only update must not attempt this optional provider")
     }
     func testUpdateAllKeepsSuccessfulOfficialRefreshWithOptionalWarning() throws {
         let storage = try storage(); try legacySubscription(storage)
         var officialCalls = 0
         let engine = Engine(storage: storage, officialUpdateOverride: { _, _ in officialCalls += 1 })
         let issues = try engine.update(cancellation: Cancellation()) { _ in }
-        XCTAssertEqual(officialCalls, 1); XCTAssertEqual(issues.count, 1)
-        XCTAssertFalse(issues[0].message.contains("no such file"))
+        XCTAssertEqual(officialCalls, 1); XCTAssertEqual(issues.count, 0)
     }
     func testDefaultAutoUpdateScanRunsRealBaselineWithMissingOptionalConfig() throws {
         let storage = try storage(); try legacySubscription(storage)
@@ -93,12 +96,10 @@ final class SourceSetupRegressionTests: XCTestCase {
         XCTAssertEqual(officialCalls, 1)
         XCTAssertGreaterThan(result.scannedFiles, 0)
         XCTAssertEqual(result.exitCode, 0)
-        XCTAssertEqual(result.outcome, .incomplete)
+        XCTAssertEqual(result.outcome, .completed)
         XCTAssertTrue(result.baselineFinished)
-        XCTAssertEqual(result.displayTitle, "Baseline finished; optional checks skipped")
-        XCTAssertTrue(Interpretation.nextSteps(result).contains { $0.contains("turn off skipped optional sources") })
-        XCTAssertTrue(result.passes?.contains { $0.source == "SecuriteInfo subscription" && $0.status == "notRun" } == true)
-        XCTAssertTrue(result.coverageNotes?.contains { $0.contains("No SecuriteInfo subscription URLs") } == true)
+        XCTAssertEqual(result.passes?.count, 1)
+        XCTAssertEqual(result.warnings, 0, "Unconfigured, disabled optional sources are not scan failures")
         XCTAssertFalse(result.note.contains("no such file"))
     }
     func testScanWithoutRefreshAlsoIsolatesLegacyMissingConfig() throws {
@@ -106,7 +107,7 @@ final class SourceSetupRegressionTests: XCTestCase {
         var preferences = try cleanFixture(storage); preferences.updateBeforeScan = false
         let result = try Engine(storage: storage).scan(preferences: preferences, cancellation: Cancellation()) { _ in }
         XCTAssertTrue(result.baselineFinished)
-        XCTAssertEqual(result.outcome, .incomplete)
+        XCTAssertEqual(result.outcome, .completed)
         XCTAssertGreaterThan(result.scannedFiles, 0)
     }
     func testUnconfiguredDisabledSourceDoesNotAffectBaselineAtAll() throws {

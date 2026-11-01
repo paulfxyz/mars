@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.1
+
+Source setup should be understandable, not a wall of errors.
+
+- Create an empty, private SecuriteInfo URL file on first launch without overwriting existing configuration.
+- Treat empty/whitespace-only subscription configuration as disabled and not configured, with a clear Configure sources prompt and no stale missing-file error.
+- Require fresh validation and explicit activation after replacing private URLs; preserve real errors for nonempty invalid configuration.
+- Remove unreliable automatic Sanesecurity downloads, their controls, transport/key code, and GnuPG/rsync installation.
+- Retire saved Sanesecurity profiles from scanning and updates while preserving their existing files and all historical reports.
+- Keep official ClamAV, optional YARA-X with pinned Elastic rules, and manual imports for both engines.
+
 ## 1.1.0
 
 User-reported scan/Settings fix and an in-app update function.

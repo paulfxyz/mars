@@ -50,6 +50,7 @@ struct RootView: View {
                     Text(model.busy ? model.operation : "Local scans. No uploads.").font(.system(size: 11)).foregroundStyle(.secondary)
                 }.padding(.horizontal, 32).frame(height: 54)
                 Divider().opacity(0.5)
+                ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         switch model.page {
@@ -66,6 +67,11 @@ struct RootView: View {
                             Text("Your files stay on your Mac. Mars never removes them.")
                         }.font(.system(size: 11)).foregroundStyle(.secondary).padding(.top, 3)
                     }.padding(32).frame(maxWidth: 1080, alignment: .leading).frame(maxWidth: .infinity)
+                }.onAppear {
+                    if model.demo && ProcessInfo.processInfo.arguments.contains("--subscription-setup") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { proxy.scrollTo("securiteinfo", anchor: .bottom) }
+                    }
+                }
                 }
             }.background(Palette.background)
         }
@@ -80,7 +86,7 @@ struct RootView: View {
         .alert("Install optional component?", isPresented: Binding(get: { model.optionalPackage != nil }, set: { if !$0 { model.optionalPackage = nil } })) {
             Button("Install with Homebrew") { if let package = model.optionalPackage { model.installOptionalConfirmed(package) } }
             Button("Cancel", role: .cancel) { model.optionalPackage = nil }
-        } message: { Text("Mars will install \(model.optionalPackage == "gnupg" ? "GnuPG and a current rsync for signed-feed verification" : "YARA-X") with Homebrew. Older or Intel Macs may require source builds. You can still use ClamAV if an optional component is unavailable.") }
+        } message: { Text("Mars will install YARA-X with Homebrew. Older or Intel Macs may require source builds. You can still use ClamAV if an optional component is unavailable.") }
     }
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {

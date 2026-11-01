@@ -84,21 +84,22 @@ struct DetectionSourcesView: View {
                                 Button("Update & validate") { model.updateSource(source) }
                                     .disabled(model.busy || model.sourceSetupIssue(source, requireActive: false) != nil)
                             }
-                            if source.kind == .securiteinfo { Button("Configure private feed URLs…") { model.showPrivateFeedSetup = true }.disabled(model.busy) }
-                            if source.kind == .sanesecurity { Button("Install verification tools…") { model.optionalPackage = "gnupg" }.disabled(model.busy) }
+                            if source.kind == .securiteinfo { Button("Configure sources…") { model.showPrivateFeedSetup = true }.disabled(model.busy) }
                             Button("Roll back") { model.rollbackSource(source) }
                                 .disabled(model.busy || !FileManager.default.fileExists(atPath: model.storage.sourceDirectory(source.id).appendingPathComponent("previous").path))
                             Spacer()
                             if source.kind != .local { Button("Provider & terms") { model.open(source.origin) } }
                         }.font(.system(size: 11))
                     }
-                }
+                }.id(source.id)
             }
             HStack {
                 Button("Import ClamAV definitions / compatible YARA…") { model.importSource(engine: .clamav) }
                 Button("Import YARA-X rules…") { model.importSource(engine: .yaraX) }
             }.disabled(model.busy)
-            Text("Updates are staged, checked by the target engine, then activated under the shared scan lock. Elastic files additionally require pinned hashes; Sanesecurity requires its pinned GPG key. One prior copy is retained for rollback. Local imports do not update themselves. No rule count is a claim of detection quality.")
+            Text("Updates are staged, checked by the target engine, then activated under the shared scan lock. Elastic files additionally require pinned hashes. One prior copy is retained for rollback. Local imports do not update themselves. No rule count is a claim of detection quality.")
+                .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
+            Text("Automatic Sanesecurity downloads have been removed. Existing local files and old reports are retained; trusted definitions can still be imported manually.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
         }
     }
@@ -139,6 +140,8 @@ struct PrivateFeedsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your SecuriteInfo feed").font(.system(size: 25, weight: .medium, design: .serif))
+            Text("Optional: an empty configuration keeps this source off. Add your own URLs, accept the terms, then update and validate before enabling it. The ClamAV baseline works without it.")
+                .font(.system(size: 12, weight: .medium)).lineSpacing(4)
             Text("Copy signature download URLs from your own licensed account. Add them one at a time; Mars accepts only official HTTPS /get/signatures/ links. Do not share these private links in GitHub issues.")
                 .font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(4)
             SecureField("Private signature URL", text: $entry).textFieldStyle(.roundedBorder).privacySensitive()

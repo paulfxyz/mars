@@ -56,11 +56,13 @@ If you move or replace Mars.app, open it and Save schedule again to refresh the 
 
 Mars 1.0.0 adds Detection Sources. ClamAV remains the required baseline; to use a second engine, install YARA-X there, switch on its scan inclusion, then enable and update a compatible source. Optional Homebrew packages may not support every older macOS/Intel configuration even though the Mars app itself has universal slices.
 
-Every unofficial source requires a terms confirmation. Elastic's starter rules are pinned and hash-checked; Sanesecurity requires GnuPG and rsync connectivity; SecuriteInfo requires your own licensed official URLs. Configure those URLs inside Mars, not in chat or a public issue. A failed verification leaves the previous source untouched, and Roll back swaps the retained versions.
+Every unofficial source requires a terms confirmation. Elastic's starter rules are pinned and hash-checked; SecuriteInfo requires your own licensed official URLs. Configure those URLs inside Mars, not in chat or a public issue. A failed verification leaves the previous source untouched, and Roll back swaps the retained versions.
 
 In 1.1.0, accepting terms does not enable a source. Complete configuration, use Update & validate, then switch the source on. Older profiles with an enabled but incomplete source still run the ClamAV baseline; missing optional checks appear as skipped. Settings updates official definitions independently; Detection Sources offers a separate update-all action.
 
-Install verification tools installs both GnuPG and a current Homebrew rsync. Built-in macOS rsync versions can differ substantially; Mars prefers the Homebrew binary and bounds each transfer with a wall-clock deadline. Sanesecurity's signed payload dates are displayed separately from its download time, because some databases contain older historical signatures.
+In 1.1.1, Mars creates an empty `private-securiteinfo-urls.txt` with 0600 permissions inside its private local-data folder. An empty list leaves SecuriteInfo disabled with a Configure sources prompt, not a missing-file error. Existing nonempty configurations are not overwritten. Replacing the URL list requires a fresh validation and explicit re-enabling.
+
+Automatic Sanesecurity downloads have been removed because the rsync integration was unreliable. Saved legacy source entries are excluded from scans and update-all; their downloaded files and historical reports are not deleted. Trusted definition files can still be imported manually. Mars no longer offers to install GnuPG or rsync.
 
 During a scan, Mars displays human-readable stages and a collapsible read-only console. Observed results are not an estimate of remaining work. YARA-X first builds a bounded candidate list; candidates submitted are not presented as a confirmed scanned-file count.
 
