@@ -184,7 +184,17 @@ final class SourceAndDualEngineTests: XCTestCase {
         var sources = Catalog.defaults
         sources[1].acceptedTerms = true
         try storage.saveSources(sources)
-        try SourceManager(storage: storage).update(id: "sanesecurity", cancellation: Cancellation()) { _ in }
+        // The provider's DNS rotates rsync mirrors. Retry only transport
+        // failures; never retry away a signature, engine, or assertion failure.
+        for attempt in 1...3 {
+            do {
+                try SourceManager(storage: storage).update(id: "sanesecurity", cancellation: Cancellation()) { _ in }
+                break
+            } catch {
+                guard attempt < 3, error.localizedDescription.hasPrefix("Sanesecurity transport failed") else { throw error }
+                print("Sanesecurity live transport attempt \(attempt) failed; retrying the provider mirror.")
+            }
+        }
         let source = try XCTUnwrap(storage.sources().first { $0.id == "sanesecurity" })
         XCTAssertEqual(source.files, 4)
         XCTAssertTrue(source.revision?.contains("signed payload dates") == true)
