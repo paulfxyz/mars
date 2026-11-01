@@ -30,7 +30,7 @@ jobs:
             NAME="$1"; shift
             # LaunchServices sends the normal open-application event. Directly
             # executing the binary can leave SwiftUI's WindowGroup unopened.
-            open -n -W dist/Mars.app --args --demo --screenshot "$PWD/dist/screenshot-$NAME.png" "$@" &
+            open -n -W --stdout "$PWD/dist/capture-$NAME.log" --stderr "$PWD/dist/capture-$NAME.log" dist/Mars.app --args --demo --screenshot "$PWD/dist/screenshot-$NAME.png" "$@" &
             PID=$!
             for ATTEMPT in {1..30}; do
               if ! kill -0 "$PID" 2>/dev/null; then break; fi
@@ -38,7 +38,7 @@ jobs:
             done
             if kill -0 "$PID" 2>/dev/null; then kill "$PID"; exit 1; fi
             wait "$PID"
-            test -s "dist/screenshot-$NAME.png"
+            if ! test -s "dist/screenshot-$NAME.png"; then cat "dist/capture-$NAME.log"; exit 1; fi
           }
           for PAGE in overview scan schedule history settings; do capture "$PAGE" --page "$PAGE"; done
           capture overview-dark --dark
@@ -59,6 +59,7 @@ jobs:
           name: Mars-native-ui-debug
           path: |
             dist/screenshot-*.png
+            dist/capture-*.log
             dist/Mars-*-macOS-universal.zip
             dist/SHA256SUMS.txt
           retention-days: 7

@@ -84,6 +84,7 @@ struct MarsApp: App {
         }
         .defaultSize(width: 1120, height: 820)
         .windowStyle(.hiddenTitleBar)
+        .presentMarsOnLaunch()
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Mars") {
@@ -113,6 +114,17 @@ struct MarsApp: App {
             }
         }
         MenuBarExtra("Mars", systemImage: "shield.lefthalf.filled") { MarsMenu().environmentObject(model) }
+    }
+}
+
+private extension Scene {
+    @SceneBuilder
+    func presentMarsOnLaunch() -> some Scene {
+        if #available(macOS 15.0, *) {
+            self.defaultLaunchBehavior(.presented)
+        } else {
+            self
+        }
     }
 }
 
