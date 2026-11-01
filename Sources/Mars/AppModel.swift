@@ -80,7 +80,8 @@ final class AppModel: ObservableObject {
                 record.coverageNotes = ["Illustrative permission warning: one folder could not be checked."]
                 record.passes = [ScanPass(engine: "ClamAV", source: "Official ClamAV", status: "completed", files: 24861),
                     ScanPass(engine: "YARA-X", source: "Illustrative demo source", status: "completed", files: 100, findings: 1, countMeaning: "candidate files submitted")]
-                selectedRecord = record
+                let previewRecord = record
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.selectedRecord = previewRecord }
             }
         }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in

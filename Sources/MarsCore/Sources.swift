@@ -262,9 +262,11 @@ public struct SourceManager {
         var dates: [String] = []
         for file in ["rogue.hdb", "malwarehash.hsb", "sigwhitelist.ign2", "sanesecurity.ftm"] {
             for name in [file, "\(file).sig"] {
-                let code = try ProcessRunner.run("/usr/bin/rsync", ["--timeout=30", "--contimeout=15",
-                    "rsync://rsync.sanesecurity.net/sanesecurity/\(name)", stage.appendingPathComponent(name).path], cancellation: cancellation)
-                guard code == 0 else { throw MarsError.message("Sanesecurity mirror unavailable. Previous signatures remain unchanged.") }
+                var details: [String] = []
+                // macOS's built-in rsync can be 2.6.x; --contimeout is not supported there.
+                let code = try ProcessRunner.run(Engine.executable("rsync") ?? "/usr/bin/rsync", ["--timeout=30", "--max-size=100000000",
+                    "rsync://rsync.sanesecurity.net/sanesecurity/\(name)", stage.appendingPathComponent(name).path], cancellation: cancellation) { details.append($0) }
+                guard code == 0 else { throw MarsError.message("Sanesecurity transport failed (exit \(code)): \(details.suffix(3).joined(separator: " ")). Previous signatures remain unchanged.") }
             }
             var verified = false
             var signedDate = "date not reported"

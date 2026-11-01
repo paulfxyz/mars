@@ -9,13 +9,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "--screenshot"), arguments.indices.contains(index + 1) {
             NSApp.appearance = NSAppearance(named: arguments.contains("--dark") ? .darkAqua : .aqua)
-            if arguments.contains("--compact") {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    NSApp.windows.first(where: { $0.canBecomeMain })?.setContentSize(NSSize(width: 1020, height: 740))
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let size = arguments.contains("--compact") ? NSSize(width: 1020, height: 740) : NSSize(width: 1120, height: 820)
+                NSApp.windows.first(where: { $0.canBecomeMain })?.setContentSize(size)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                 let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil }
+                if arguments.contains("--results") && !visible.contains(where: { $0.isSheet }) {
+                    fputs("Expected demo report sheet was not visible; refusing a misleading results screenshot.\n", stderr)
+                    exit(6)
+                }
                 let chosen = arguments.contains("--results") ? (visible.first(where: { $0.isSheet }) ?? visible.first) : visible.first
                 guard let window = chosen,
                       let view = window.contentView,
