@@ -187,8 +187,12 @@ public struct Engine {
             record.scannedFiles = parser.scannedFiles
             record.warnings = parser.warnings
             record.outcome = parser.outcome(exitCode: code, cancelled: cancellation.isCancelled)
+            if [.failed, .incomplete].contains(record.outcome) {
+                record.warnings += 1
+                record.coverageNotes?.append("The ClamAV baseline did not complete with full intended coverage (exit \(code)).")
+            }
             record.passes?.append(ScanPass(engine: "ClamAV", source: "Official ClamAV", status: record.outcome.rawValue,
-                files: parser.scannedFiles, findings: parser.findings.count, warnings: parser.warnings, logPath: record.logPath))
+                files: parser.scannedFiles, findings: parser.findings.count, warnings: record.warnings, logPath: record.logPath))
             var completed = 1
             var plan: YaraPlan?
             defer { if let plan { try? FileManager.default.removeItem(at: plan.list) } }

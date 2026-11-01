@@ -15,7 +15,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil }),
+                let visible = NSApp.windows.filter { $0.isVisible && $0.contentView != nil }
+                let chosen = arguments.contains("--results") ? (visible.first(where: { $0.isSheet }) ?? visible.first) : visible.first
+                guard let window = chosen,
                       let view = window.contentView,
                       let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(3) }
                 view.cacheDisplay(in: view.bounds, to: bitmap)

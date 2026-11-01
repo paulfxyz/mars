@@ -177,4 +177,17 @@ final class SourceAndDualEngineTests: XCTestCase {
         XCTAssertEqual(storage.sources()[0].revision, Catalog.elasticRevision)
         XCTAssertTrue(FileManager.default.fileExists(atPath: storage.activeSource("elastic-mac").appendingPathComponent("LICENSE.txt").path))
     }
+    func testLiveSanesecurityDownloadVerifyAndLoad() throws {
+        guard ProcessInfo.processInfo.environment["MARS_SOURCE_NETWORK_TESTS"] == "1" else { throw XCTSkip("Opt-in network source verification.") }
+        try engines()
+        let storage = try storage()
+        var sources = Catalog.defaults
+        sources[1].acceptedTerms = true
+        try storage.saveSources(sources)
+        try SourceManager(storage: storage).update(id: "sanesecurity", cancellation: Cancellation()) { _ in }
+        let source = try XCTUnwrap(storage.sources().first { $0.id == "sanesecurity" })
+        XCTAssertEqual(source.files, 4)
+        XCTAssertTrue(source.revision?.contains("signed payload dates") == true)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: storage.activeSource("sanesecurity").appendingPathComponent("rogue.hdb").path))
+    }
 }

@@ -26,7 +26,7 @@ public struct DetectionSource: Codable, Identifiable, Equatable {
     public var explanation: String {
         switch kind {
         case .elastic: return "Four curated Mac malware rule files from Elastic Security, pinned to a reviewed commit and SHA-256 hashes. Not a comprehensive Mac threat database."
-        case .sanesecurity: return "Malware hashes plus required file-type and false-positive allowlist files. Downloads use rsync and must pass verification against the pinned Sanesecurity public key."
+        case .sanesecurity: return "Malware hashes (rogue and malwarehash) plus required file-type and false-positive allowlist files. Downloads use rsync and must pass verification against the pinned provider key. Signed payload dates are shown separately from download time."
         case .securiteinfo: return "Your own licensed HTTPS signature URLs. Paid access may be required; free Basic is intended for installation validation. No subscription or credentials are shared by Mars."
         case .local: return "User-imported rules or definitions. You are responsible for their provenance, license, quality, and future refreshes."
         }
@@ -223,14 +223,14 @@ public struct SourceManager {
                 try Catalog.check(Data(contentsOf: license), expected: "48255018b41fc0e965b1115af7e6779bc218bb8a6747d561da800d5022622aa2")
                 source.files = Catalog.elasticFiles.count; source.revision = Catalog.elasticRevision
             case .sanesecurity:
-                try downloadSanesecurity(stage: stage, cancellation: cancellation, line: line)
-                source.files = 3; source.revision = "GPG-verified provider release"
+                let dates = try downloadSanesecurity(stage: stage, cancellation: cancellation, line: line)
+                source.files = 4; source.revision = "GPG verified; signed payload dates: \(dates.joined(separator: " · ")). Download time does not establish freshness."
             case .securiteinfo:
                 let raw = try String(contentsOf: storage.privateFeeds())
                 let urls = try Self.validateFeedURLs(raw)
                 for (offset, url) in urls.enumerated() {
                     let ext = url.pathExtension.lowercased()
-                    guard ["ndb", "ldb", "hdb", "hsb", "cvd", "cld"].contains(ext) else { throw MarsError.message("Unsupported subscription database format.") }
+                    guard ["ndb", "ldb", "hdb", "hsb", "cvd", "cld", "ign2", "fp", "sfp"].contains(ext) else { throw MarsError.message("Unsupported subscription database format.") }
                     try download(url, destination: stage.appendingPathComponent("feed-\(offset).\(ext)"), cancellation: cancellation)
                 }
                 source.files = urls.count; source.revision = "Own subscription; HTTPS transport, engine validation"
@@ -248,7 +248,7 @@ public struct SourceManager {
             throw error
         }
     }
-    private func downloadSanesecurity(stage: URL, cancellation: Cancellation, line: (String) -> Void) throws {
+    private func downloadSanesecurity(stage: URL, cancellation: Cancellation, line: (String) -> Void) throws -> [String] {
         guard let gpg = Engine.executable("gpg") else { throw MarsError.message("Sanesecurity requires GnuPG. Use Install verification tools in Detection Sources.") }
         let home = stage.deletingLastPathComponent().appendingPathComponent("gpg-\(UUID())")
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -259,23 +259,31 @@ public struct SourceManager {
         guard try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--dearmor", "--output", ring.path, key.path], cancellation: cancellation) == 0 else {
             throw MarsError.message("Could not load the pinned Sanesecurity verification key.")
         }
-        for file in ["malwarehash.hsb", "sigwhitelist.ign2", "sanesecurity.ftm"] {
+        var dates: [String] = []
+        for file in ["rogue.hdb", "malwarehash.hsb", "sigwhitelist.ign2", "sanesecurity.ftm"] {
             for name in [file, "\(file).sig"] {
                 let code = try ProcessRunner.run("/usr/bin/rsync", ["--timeout=30", "--contimeout=15",
                     "rsync://rsync.sanesecurity.net/sanesecurity/\(name)", stage.appendingPathComponent(name).path], cancellation: cancellation)
                 guard code == 0 else { throw MarsError.message("Sanesecurity mirror unavailable. Previous signatures remain unchanged.") }
             }
             var verified = false
+            var signedDate = "date not reported"
             let code = try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--no-default-keyring",
                 "--keyring", ring.path, "--trust-model", "always", "--no-auto-key-retrieve", "--no-autostart",
                 "--status-fd", "1", "--verify", stage.appendingPathComponent("\(file).sig").path,
                 stage.appendingPathComponent(file).path], cancellation: cancellation) { text in
-                    if text.contains("[GNUPG:] VALIDSIG ") { verified = true }
+                    if text.contains("[GNUPG:] VALIDSIG ") {
+                        verified = true
+                        let fields = text.split(separator: " ")
+                        if fields.count > 3 { signedDate = String(fields[3]) }
+                    }
                 }
             guard code == 0 && verified else { throw MarsError.message("Sanesecurity GPG verification failed. Nothing was activated.") }
             try FileManager.default.removeItem(at: stage.appendingPathComponent("\(file).sig"))
-            line("Verified \(file) against the pinned provider key.")
+            dates.append("\(file): \(signedDate)")
+            line("Verified \(file) against the pinned provider key; payload signed \(signedDate).")
         }
+        return dates
     }
     static let sanesecurityKey = """
     -----BEGIN PGP PUBLIC KEY BLOCK-----

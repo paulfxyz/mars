@@ -32,6 +32,21 @@ public struct Finding: Codable, Identifiable, Equatable {
     public var source: String?
     public var assessment: String?
     public init(path: String, signature: String) { self.path = path; self.signature = signature }
+    public var explanation: String {
+        if signature.contains("Heuristics.Limits.Exceeded") {
+            return "ClamAV reached an inspection limit. This label describes incomplete coverage, not identification of malware."
+        }
+        if signature.lowercased().contains("eicar") {
+            return "This label refers to an antivirus test pattern. Confirm you intentionally obtained a test file; the label alone does not establish that the entire file is safe."
+        }
+        if engine == "YARA-X" {
+            return "A rule matched byte patterns or conditions in the file. This is useful evidence to review, not a confirmed infection or an automatic assessment of intent."
+        }
+        if signature.hasPrefix("Heuristics.") {
+            return "A heuristic identified a suspicious characteristic rather than necessarily matching a known malicious sample. Legitimate files can sometimes trigger these checks."
+        }
+        return "The engine reported this detection label. Review its source and the file's origin before deciding what to do; a false positive remains possible."
+    }
 }
 
 public struct ScanRecord: Codable, Identifiable {

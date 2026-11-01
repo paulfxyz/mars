@@ -122,6 +122,7 @@ struct ScanResultsView: View {
                                 VStack(alignment: .leading, spacing: 11) {
                                     Text(finding.assessment ?? "Signature match; verify before acting").font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.red)
                                     Text(finding.signature).font(.system(size: 13, weight: .semibold)).textSelection(.enabled)
+                                    Text(finding.explanation).font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
                                     Text("\(finding.engine ?? "ClamAV") · \(finding.source ?? "Source not recorded by this older app version")")
                                         .font(.system(size: 11)).foregroundStyle(.secondary)
                                     Text(finding.path).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)

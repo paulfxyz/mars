@@ -258,6 +258,7 @@ final class AppModel: ObservableObject {
         run("Updating \(source.name)") { token, emit in try manager.update(id: source.id, cancellation: token, line: emit); return nil }
     }
     func rollbackSource(_ source: DetectionSource) {
+        guard !demo, !busy else { return }
         do { try SourceManager(storage: storage).rollback(id: source.id); refresh() } catch { self.error = error.localizedDescription }
     }
     func installOptionalConfirmed(_ package: String) {
@@ -281,6 +282,7 @@ final class AppModel: ObservableObject {
         }
     }
     func savePrivateFeeds(_ text: String) {
+        guard !demo, !busy else { return }
         do {
             let operationLock = try OperationLock(storage: storage)
             defer { withExtendedLifetime(operationLock) {} }
