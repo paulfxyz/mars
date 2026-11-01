@@ -96,6 +96,7 @@ final class SourceSetupRegressionTests: XCTestCase {
         XCTAssertEqual(result.outcome, .incomplete)
         XCTAssertTrue(result.baselineFinished)
         XCTAssertEqual(result.displayTitle, "Baseline finished; optional checks skipped")
+        XCTAssertTrue(Interpretation.nextSteps(result).contains { $0.contains("turn off skipped optional sources") })
         XCTAssertTrue(result.passes?.contains { $0.source == "SecuriteInfo subscription" && $0.status == "notRun" } == true)
         XCTAssertTrue(result.coverageNotes?.contains { $0.contains("No SecuriteInfo subscription URLs") } == true)
         XCTAssertFalse(result.note.contains("no such file"))

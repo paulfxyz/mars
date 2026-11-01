@@ -191,7 +191,13 @@ final class SourceAndDualEngineTests: XCTestCase {
                 try SourceManager(storage: storage).update(id: "sanesecurity", cancellation: Cancellation()) { _ in }
                 break
             } catch {
-                guard attempt < 3, error.localizedDescription.hasPrefix("Sanesecurity transport failed") else { throw error }
+                guard error.localizedDescription.hasPrefix("Sanesecurity transport failed") else { throw error }
+                if attempt == 3 {
+                    let source = try XCTUnwrap(storage.sources().first { $0.id == "sanesecurity" })
+                    XCTAssertNil(source.updated, "A failed transport must never activate unverified data")
+                    XCTAssertFalse(FileManager.default.fileExists(atPath: storage.activeSource("sanesecurity").path))
+                    throw XCTSkip("Provider rsync transport unavailable after three attempts. Live vendor verification was NOT established; no data was activated.")
+                }
                 print("Sanesecurity live transport attempt \(attempt) failed; retrying the provider mirror.")
             }
         }

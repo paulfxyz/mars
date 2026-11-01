@@ -153,7 +153,12 @@ public enum Interpretation {
         var steps: [String] = []
         if !record.findings.isEmpty { steps += ["Do not open or run flagged files.", "Check the rule name, source, and file location. A rule match is not confirmation of infection.", "If this looks like a real compromise, disconnect from networks and seek trusted help before changing evidence."] }
         if record.warnings > 0 || [.incomplete, .failed].contains(record.outcome) {
-            steps += ["Review coverage notes and logs; grant only the access you intend to allow.", "Update the enabled sources, then retry a smaller known folder."]
+            if record.baselineFinished && record.passes?.contains(where: { $0.status == "notRun" }) == true {
+                steps += ["Open Engines & sources to configure or turn off skipped optional sources. No subscription is required for the ClamAV baseline.",
+                    "Review coverage notes and logs, then retry a smaller known folder if needed."]
+            } else {
+                steps += ["Review coverage notes and logs; grant only the access you intend to allow.", "Update the enabled sources, then retry a smaller known folder."]
+            }
         }
         if record.outcome == .completed { steps += ["Keep macOS, the scanning engines, and definitions updated.", "Save a scan routine if useful. Mars does not provide real-time protection."] }
         if record.outcome == .cancelled { steps.append("Run another scan when convenient; cancelled work is not automatically resumed.") }

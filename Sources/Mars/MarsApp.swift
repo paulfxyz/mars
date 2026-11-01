@@ -26,8 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     window.title = "Mars"
                     window.titleVisibility = .hidden
                     window.titlebarAppearsTransparent = true
-                    window.contentView = NSHostingView(rootView: RootView().environmentObject(previewModel))
+                    window.contentView = NSHostingView(rootView: RootView().environmentObject(previewModel)
+                        .frame(minWidth: 1020, minHeight: 740))
                     window.center()
+                    window.setContentSize(size)
                     self.captureWindow = window
                     window.makeKeyAndOrderFront(nil)
                     NSApp.activate(ignoringOtherApps: true)
