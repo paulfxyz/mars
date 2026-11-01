@@ -97,13 +97,19 @@ public struct AppUpdater {
         return folder
     }
     private func fetch(_ url: URL, to target: URL, maxBytes: Int, cancellation: Cancellation) throws {
-        let code = try ProcessRunner.run("/usr/bin/curl", ["--fail", "--silent", "--show-error", "--location",
+        let code = try ProcessRunner.run("/usr/bin/curl", ["--disable", "--fail", "--silent", "--show-error", "--location",
             "--proto", "=https", "--proto-redir", "=https", "--connect-timeout", "15", "--max-time", "180",
             "--max-filesize", "\(maxBytes)", "--user-agent", "Mars/\(AppVersion.current)",
             "--output", target.path, url.absoluteString], cancellation: cancellation, timeout: 190)
         if cancellation.isCancelled { throw MarsError.message("Update check or download cancelled.") }
         guard code == 0 else { throw MarsError.message("Could not contact GitHub or download this update (transport \(code)). Check the connection and try later; GitHub can also rate-limit update checks.") }
-        let size = try target.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        try Self.validateResponseFile(target, maxBytes: maxBytes)
+    }
+    static func validateResponseFile(_ target: URL, maxBytes: Int) throws {
+        // curl writes outside Foundation. Read fresh filesystem attributes rather
+        // than possibly stale resource metadata cached on a previously absent URL.
+        let attributes = try FileManager.default.attributesOfItem(atPath: target.path)
+        let size = (attributes[.size] as? NSNumber)?.intValue ?? 0
         guard size > 0, size <= maxBytes else { throw MarsError.message("The update response is empty or exceeds the download limit.") }
     }
     public func latest(cancellation: Cancellation = Cancellation()) throws -> AppRelease {

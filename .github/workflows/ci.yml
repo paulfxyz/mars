@@ -22,11 +22,6 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install test engine
         run: brew install clamav yara-x gnupg rsync
-      - name: Unit and real-engine fixture tests
-        env:
-          MARS_CLAMAV_TESTS: "1"
-          MARS_SOURCE_NETWORK_TESTS: "1"
-        run: swift test
       - name: Package universal native app
         run: bash scripts/package.sh
       - name: Capture native interface with synthetic data
@@ -52,6 +47,11 @@ jobs:
           capture scanning --scanning
           capture results --results
           capture optional-source --results --skipped-source
+      - name: Unit and real-engine fixture tests
+        env:
+          MARS_CLAMAV_TESTS: "1"
+          MARS_SOURCE_NETWORK_TESTS: "1"
+        run: swift test
       - name: Preserve failed UI captures for diagnosis
         if: failure()
         uses: actions/upload-artifact@v4

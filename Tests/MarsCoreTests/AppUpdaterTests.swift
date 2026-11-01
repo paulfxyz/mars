@@ -48,6 +48,20 @@ final class AppUpdaterTests: XCTestCase {
         let token = Cancellation(); token.cancel()
         XCTAssertThrowsError(try AppUpdater.verify(file: file, expected: Catalog.sha256(data), cancellation: token))
     }
+    func testExternallyWrittenResponseUsesFreshFileAttributes() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("mars-response-\(UUID())")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appendingPathComponent("source")
+        let target = folder.appendingPathComponent("response")
+        _ = try? target.resourceValues(forKeys: [.fileSizeKey])
+        try Data("response bytes".utf8).write(to: source)
+        XCTAssertEqual(try ProcessRunner.run("/bin/cp", [source.path, target.path]), 0)
+        XCTAssertNoThrow(try AppUpdater.validateResponseFile(target, maxBytes: 100))
+        XCTAssertThrowsError(try AppUpdater.validateResponseFile(target, maxBytes: 1))
+        try Data().write(to: target)
+        XCTAssertThrowsError(try AppUpdater.validateResponseFile(target, maxBytes: 100))
+    }
     func testLiveOfficialUpdateMetadataDownloadChecksumAndQuarantine() throws {
         guard ProcessInfo.processInfo.environment["MARS_SOURCE_NETWORK_TESTS"] == "1" else { throw XCTSkip("Public release update test is opt-in.") }
         let storage = Storage(root: FileManager.default.temporaryDirectory.appendingPathComponent("mars-updater-\(UUID())"))
