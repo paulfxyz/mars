@@ -5,6 +5,7 @@ import MarsCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var model: AppModel?
+    private var captureWindow: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.activate(ignoringOtherApps: true)
         let arguments = ProcessInfo.processInfo.arguments
@@ -12,7 +13,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.appearance = NSAppearance(named: arguments.contains("--dark") ? .darkAqua : .aqua)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 let size = arguments.contains("--compact") ? NSSize(width: 1020, height: 740) : NSSize(width: 1120, height: 820)
-                NSApp.windows.first(where: { $0.canBecomeMain })?.setContentSize(size)
+                // CI can launch without SwiftUI creating an initial WindowGroup.
+                // Host the exact production RootView, not an alternate mock UI.
+                if let existing = NSApp.windows.first(where: { $0.canBecomeMain && $0.frame.width >= 600 }) {
+                    existing.setContentSize(size)
+                    existing.makeKeyAndOrderFront(nil)
+                } else if arguments.contains("--demo") {
+                    let previewModel = AppModel()
+                    let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                        styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                        backing: .buffered, defer: false)
+                    window.title = "Mars"
+                    window.titleVisibility = .hidden
+                    window.titlebarAppearsTransparent = true
+                    window.contentView = NSHostingView(rootView: RootView().environmentObject(previewModel))
+                    window.center()
+                    self.captureWindow = window
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                 self.capture(output: arguments[index + 1], report: arguments.contains("--results"), remainingAttempts: 40)
@@ -84,7 +103,6 @@ struct MarsApp: App {
         }
         .defaultSize(width: 1120, height: 820)
         .windowStyle(.hiddenTitleBar)
-        .presentMarsOnLaunch()
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Mars") {
@@ -114,17 +132,6 @@ struct MarsApp: App {
             }
         }
         MenuBarExtra("Mars", systemImage: "shield.lefthalf.filled") { MarsMenu().environmentObject(model) }
-    }
-}
-
-private extension Scene {
-    @SceneBuilder
-    func presentMarsOnLaunch() -> some Scene {
-        if #available(macOS 15.0, *) {
-            self.defaultLaunchBehavior(.presented)
-        } else {
-            self
-        }
     }
 }
 
