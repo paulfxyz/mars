@@ -124,7 +124,7 @@ swift run mars
 For engine integration tests and a universal app bundle:
 
 ```sh
-brew install clamav yara-x gnupg
+brew install clamav yara-x gnupg rsync
 MARS_CLAMAV_TESTS=1 swift test
 bash scripts/package.sh
 open dist/Mars.app

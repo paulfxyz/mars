@@ -58,6 +58,8 @@ Mars 1.0.0 adds Detection Sources. ClamAV remains the required baseline; to use 
 
 Every unofficial source requires a terms confirmation. Elastic's starter rules are pinned and hash-checked; Sanesecurity requires GnuPG and rsync connectivity; SecuriteInfo requires your own licensed official URLs. Configure those URLs inside Mars, not in chat or a public issue. A failed verification leaves the previous source untouched, and Roll back swaps the retained versions.
 
+Install verification tools installs both GnuPG and a current Homebrew rsync. Built-in macOS rsync versions can differ substantially; Mars prefers the Homebrew binary and bounds each transfer with a wall-clock deadline. Sanesecurity's signed payload dates are displayed separately from its download time, because some databases contain older historical signatures.
+
 During a scan, Mars displays human-readable stages and a collapsible read-only console. Observed results are not an estimate of remaining work. YARA-X first builds a bounded candidate list; candidates submitted are not presented as a confirmed scanned-file count.
 
 The report explains the outcome, exact source provenance, coverage notes, and safe next steps. Prepare another scan restores the scope but does not start work without another click. Finder reveal, copy path, and JSON export are available; no delete or quarantine action is performed.

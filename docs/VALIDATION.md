@@ -2,11 +2,17 @@
 
 This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
 
-## Verified build
+## Mars 1.0.0 verified build
 
-The 1.0.0 test suite adds old-report migration, opt-in source defaults, pinned-content tamper rejection, private URL restrictions/storage permissions, atomic activation/rollback, YARA JSON attribution, candidate-list limits, cancellation, safe result interpretation, pinned GPG-key import, real two-engine scanning, missing-source coverage, invalid rule rejection, and live pinned Elastic download/compilation. The release workflow must pass these checks before publication.
+The [native macOS run on November 1, 2026](https://github.com/paulfxyz/mars/actions/runs/41312796415) passed **36 tests with zero failures**, packaged the universal app, verified its ad-hoc signature and both architectures, and captured ten actual native views. Its tested app-source commit is `e662105`; the following documentation and screenshot additions do not change that app source.
 
-The historical evidence below belongs to 0.1.0 and is not presented as 1.0.0 acceptance. Native 1.0.0 screenshots and CI evidence are updated after the new run.
+The checks include old-report/preferences migration, opt-in source defaults, pinned-content tamper rejection, private URL restrictions/storage permissions, activation and rollback, YARA JSON attribution, candidate-list limits, user cancellation, a bounded transport deadline that is not mislabeled user cancellation, safe result interpretation, and an isolated pinned GPG verification keyring.
+
+Live tests downloaded and compiled the pinned Elastic Mac pack, and downloaded Sanesecurity's four files, verified their detached signatures against the embedded provider key, and loaded them in ClamAV. A harmless custom fixture exercised ClamAV and YARA-X in the same scan and preserved engine/source provenance. No real malware was used.
+
+The downloaded universal ZIP passed a second SHA-256 check outside the CI runner. All ten captures were visually reviewed: overview, scan setup, schedule, history, settings, dark overview, compact overview, sources, during-scan console, and the actual results sheet. All use clearly labeled synthetic data; scrollable screens intentionally show a normal viewport rather than fabricated full-page layouts.
+
+## Historical 0.1.0 evidence
 
 The [native macOS run on October 31, 2026](https://github.com/paulfxyz/mars/actions/runs/41188889071) passed **17 tests with zero failures**, including the real ClamAV custom-signature fixture. The tested app-source commit is `3cb0f8c`; subsequent repository documentation and image additions do not change the app source in this release.
 
@@ -29,6 +35,9 @@ Packaging must build both arm64 and x86_64 executables for GUI and helper, verif
 - A real scheduled run while the GUI is quit, followed by sleep/wake and login behavior.
 - Real-world malware detection performance, false-positive rate, or resistance to hostile input.
 - Native Intel execution; a universal Intel slice is built and checked but not executed by an Apple-silicon runner.
+- A real paid SecuriteInfo account and authorized subscription URLs; configuration validation is tested, not a customer's account.
+- Optional Homebrew YARA-X/GnuPG/rsync availability on every macOS 13+ and Intel configuration.
+- Detection quality of arbitrary imported packs or all upstream Elastic rules beyond the four pinned files.
 
 ## Hands-on acceptance checklist
 
