@@ -24,3 +24,9 @@ The checksum verifies integrity, not Apple Developer ID identity. The app remain
 Download `Mars-1.1.0-macOS-universal.zip`, extract it, and replace the older Mars.app after quitting it. Existing local data is retained. If you use scheduled scans, open the new app and save the schedule again.
 
 SecuriteInfo is optional and still requires your own authorized feed URLs. If you do not use that subscription, leave it disabled. ClamAV does not require it.
+
+## Validation
+
+The [pre-release native macOS 15 run](https://github.com/paulfxyz/mars/actions/runs/41330001643) executed 55 tests: 54 passed, one live Sanesecurity connectivity check was explicitly skipped after three mirror timeouts, and none failed. Real ClamAV/YARA-X fixtures, the reported missing-configuration regressions, and a live app-update download with checksum and quarantine checks passed.
+
+Universal packaging, architecture checks, and ad-hoc signature verification passed. Eleven native captures were visually reviewed and refreshed in the repository, and the downloaded ZIP checksum was independently checked. See [validation boundaries](https://github.com/paulfxyz/mars/blob/main/docs/VALIDATION.md) for the remaining hands-on Mac acceptance checks.

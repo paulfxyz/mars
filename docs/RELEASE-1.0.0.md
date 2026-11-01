@@ -1,5 +1,7 @@
 # Mars 1.0.0
 
+> Known issue, fixed in [Mars 1.1.0](https://github.com/paulfxyz/mars/releases/tag/v1.1.0): accepting SecuriteInfo terms could enable an unconfigured optional subscription and stop scans and Settings updates. Upgrade to 1.1.0; no subscription is required for the official ClamAV baseline.
+
 Two local engines, selectable detection sources, and a friendlier scan experience. The app remains native, non-destructive, and independent of the engine and feed providers.
 
 ## New in 1.0.0

@@ -2,7 +2,23 @@
 
 This document separates automated evidence from real-Mac acceptance. A successful build is not proof of comprehensive antivirus protection.
 
-## Mars 1.0.0 verified build
+## Mars 1.1.0 regression coverage
+
+The [native macOS 15 validation run](https://github.com/paulfxyz/mars/actions/runs/41330001643) executed **55 tests: 54 passed, one live provider-connectivity test skipped, zero failures**. It built and architecture-checked the universal app and helper, verified the ad-hoc signature, and captured eleven native views. Tested Swift source is `5489560`; the subsequent documentation and capture refresh does not change that Swift source.
+
+All eleven captures were visually reviewed, including Settings' app-update card and the missing-subscription result. The downloaded ZIP independently passed its SHA-256 manifest check. Sanesecurity's live rsync mirror was unavailable after three transport attempts on this run; no live vendor signature loading is claimed for it. Successful earlier vendor checks remain historical evidence, not proof of present connectivity.
+
+The regression suite reproduces a saved 1.0.0 profile with SecuriteInfo enabled and its private configuration file missing. It exercises both Settings' official-only refresh and the default update-before-scan path. The latter uses a deterministic official-refresh test seam followed by **real clamscan** against harmless local fixtures; it does not pretend that CI downloaded the full official database. The production public initializer does not expose that seam.
+
+Additional checks cover terms acceptance without activation, disabling legacy broken configuration, actionable setup errors, optional-source warning isolation, cancellation, and a first automatic YARA-X source update using fresh metadata.
+
+Updater checks cover numeric versions, stable-release parsing, exact official repository URLs, missing/duplicate checksums, tamper rejection, cancellation, and a live published-release download with SHA-256 verification and macOS quarantine metadata. They never install or execute the downloaded app.
+
+The live Sanesecurity test permits at most three attempts for provider **transport failures only**. Signature, loading, and assertion failures still fail CI. If transport remains unavailable, the test verifies that nothing was activated and is explicitly marked **skipped**, not passed; the live vendor verification is not established on that run. This acknowledges mirror variability without bypassing integrity checks. macOS 15 is the native runner, replacing the retiring macOS 14 image.
+
+Screenshots use LaunchServices to open the actual packaged app. If the headless CI launch has no initial scene window, the app hosts its exact production `RootView` in a native `NSWindow`; there is no alternative mock interface. Captures reject menu-bar-only windows and require an actual rendered report for result images.
+
+## Historical Mars 1.0.0 build
 
 The [native macOS run on November 1, 2026](https://github.com/paulfxyz/mars/actions/runs/41312796415) passed **36 tests with zero failures**, packaged the universal app, verified its ad-hoc signature and both architectures, and captured ten actual native views. Its tested app-source commit is `e662105`; the following documentation and screenshot additions do not change that app source.
 

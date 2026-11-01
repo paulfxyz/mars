@@ -1,6 +1,6 @@
 # Install Mars
 
-Mars is a native macOS 13+ app for Apple silicon and Intel Macs. The first version is a community preview; its ad-hoc signature provides bundle integrity, not a verified Apple developer identity.
+Mars is a native macOS 13+ app for Apple silicon and Intel Macs. It remains a community preview; its ad-hoc signature provides bundle integrity, not a verified Apple developer identity.
 
 ## Download and open
 
@@ -70,7 +70,7 @@ Detections are not automatically malware confirmations. Heuristics, engine-limit
 
 Mars never deletes, moves, or quarantines files. Open raw log shows ClamAV output. Export report creates a JSON file containing local paths and detection names; review it before sharing.
 
-Update failures can stop a scan before a raw scan log exists. In that case, check `Logs/definitions.log` in Open local data. Scan reports and their referenced logs are retained for the latest 200 scans; raw logs are capped at approximately 32 MiB. `schedule.log` and `schedule-error.log` are launchd diagnostic files and are not rotated automatically.
+Official definition update failures can stop a scan before a raw scan log exists; optional-source failures are recorded as skipped checks instead. For official update failures, check `Logs/definitions.log` in Open local data. Scan reports and their referenced logs are retained for the latest 200 scans; raw logs are capped at approximately 32 MiB. `schedule.log` and `schedule-error.log` are launchd diagnostic files and are not rotated automatically.
 
 ## Update or uninstall
 

@@ -62,6 +62,12 @@ The screenshot is captured from the running native app in `--demo` mode. Its rep
 <img src="docs/screenshot-results.png" width="100%" alt="Mars results with plain-language interpretation, exact source provenance, and safe next steps">
 </details>
 
+<details>
+<summary>App updates, without surprise installations</summary>
+<p>Settings can check the official stable release and download its exact ZIP with SHA-256 integrity verification. Installation remains an explicit Finder replacement, and normal macOS approval is preserved.</p>
+<img src="docs/screenshot-settings.png" width="100%" alt="Mars 1.1.0 Settings with manual app update checking and official ClamAV definition controls">
+</details>
+
 Explore the [native screenshot gallery](docs/SCREENSHOTS.md), including scheduling, history, settings, dark mode, and the minimum window size. The original app icon is available as [PNG](assets/app.png) and [macOS ICNS](assets/app.icns); the [identity notes](assets/README.md) explain the character, palette, and visual boundaries.
 
 ## Detection sources, not a mystery bundle

@@ -32,6 +32,12 @@ The report explains what a match means, identifies its engine/source, lists cove
 
 <img src="screenshot-results.png" width="100%" alt="Mars native results sheet with interpretation, source attribution, and safe actions">
 
+## Optional source unavailable
+
+A completed ClamAV baseline is distinguished from optional checks that did not run. This synthetic reproduction of the 1.0.0 missing-subscription issue shows the repaired result: the baseline finishes, the source is identified as skipped, and setup guidance remains visible.
+
+<img src="screenshot-optional-source.png" width="100%" alt="Mars report showing a finished baseline with an unconfigured optional source skipped">
+
 ## Scheduled routines
 
 Daily and weekly choices are saved explicitly to a per-user macOS LaunchAgent. This is a normal scrollable window; further controls are below the captured viewport.
@@ -44,11 +50,11 @@ Reports separate completed, detected, incomplete, failed, and cancelled outcomes
 
 <img src="screenshot-history.png" width="100%" alt="Mars native local scan history with a synthetic report">
 
-## Engine and permissions
+## App updates, engine and permissions
 
-Engine setup, definition updates, Full Disk Access guidance, local data, and source access share a straightforward settings screen. The last footer continues below the captured viewport.
+Manual app-update checks and verified downloads lead the Settings screen. Engine setup, official definition updates, Full Disk Access guidance, local data, and source access continue below in the normal scrollable window.
 
-<img src="screenshot-settings.png" width="100%" alt="Mars native engine, privacy permissions, and local data settings">
+<img src="screenshot-settings.png" width="100%" alt="Mars native Settings with app update checking and engine controls">
 
 ## Dark appearance
 
