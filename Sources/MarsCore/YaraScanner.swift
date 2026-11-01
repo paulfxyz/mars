@@ -33,7 +33,9 @@ public struct YaraPlan {
     public static let fileLimit = 500_000
     public static func excluded(_ path: String, fullMac: Bool) -> Bool {
         guard fullMac else { return false }
-        return path.range(of: #"^(/System/Volumes/Data)?/Volumes(/|$)|^/dev(/|$)|^/Network(/|$)|^/System/Volumes/(Preboot|VM|Update|xarts|iSCPreboot|Hardware)(/|$)"#, options: .regularExpression) != nil
+        return ["/Volumes", "/System/Volumes/Data/Volumes", "/dev", "/Network",
+                "/System/Volumes/Preboot", "/System/Volumes/VM", "/System/Volumes/Update", "/System/Volumes/xarts",
+                "/System/Volumes/iSCPreboot", "/System/Volumes/Hardware"].contains { path == $0 || path.hasPrefix($0 + "/") }
     }
     public static func build(targets: [String], fullMac: Bool, storage: Storage, cancellation: Cancellation,
                              progress: (Int, String) -> Void) throws -> YaraPlan {

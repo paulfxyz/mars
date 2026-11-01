@@ -104,13 +104,18 @@ final class SourceAndDualEngineTests: XCTestCase {
         record.outcome = .completed
         XCTAssertTrue(Interpretation.summary(record).contains("does not prove"))
     }
-    func testPinnedSanesecurityKeyImportsWithoutNetwork() throws {
+    func testPinnedSanesecurityKeyBuildsIsolatedVerificationKeyring() throws {
         try engines()
         let gpg = try XCTUnwrap(Engine.executable("gpg")), storage = try storage()
         let key = storage.root.appendingPathComponent("vendor.asc")
         try Data(SourceManager.sanesecurityKey.utf8).write(to: key)
-        let result = try ProcessRunner.run(gpg, ["--no-options", "--homedir", storage.root.path, "--batch", "--import", key.path])
+        let ring = storage.root.appendingPathComponent("vendor.gpg")
+        let result = try ProcessRunner.run(gpg, ["--no-options", "--homedir", storage.root.path, "--batch", "--dearmor", "--output", ring.path, key.path])
         XCTAssertEqual(result, 0)
+        var fingerprints = ""
+        let inspect = try ProcessRunner.run(gpg, ["--no-options", "--homedir", storage.root.path, "--batch", "--show-keys", "--with-colons", ring.path]) { fingerprints += $0 }
+        XCTAssertEqual(inspect, 0)
+        XCTAssertTrue(fingerprints.contains("4E025A1CBA90A0653F38D2D8D691DED931EA4D9E"))
     }
     func testRealDualEnginePipelineAndSourceAttribution() throws {
         try engines()

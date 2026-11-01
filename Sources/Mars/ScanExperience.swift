@@ -15,7 +15,7 @@ struct ScanJourneyView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             Text(model.busy ? (model.scanUpdate?.stage ?? model.operation) : "Engine activity finished")
                                 .font(.system(size: 18, weight: .medium, design: .serif))
-                            Text(model.scanUpdate?.explanation ?? (model.busy ? "The engine is working locally. Initial setup and database loading can take a little while." : "Open a report in History to understand the result. Activity completion alone is not a clean scan verdict."))
+                            Text(model.busy ? (model.scanUpdate?.explanation ?? "The engine is working locally. Initial setup and database loading can take a little while.") : "Open a report in History to understand the result. Activity completion alone is not a clean scan verdict.")
                                 .font(.system(size: 12)).foregroundStyle(.secondary).lineSpacing(4)
                         }
                         Spacer()
@@ -153,7 +153,7 @@ struct ScanResultsView: View {
                                 Image(systemName: pass.status == "completed" ? "checkmark.circle" : "info.circle").foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text("\(pass.engine) · \(pass.source)").font(.system(size: 12, weight: .semibold))
-                                    Text("\(pass.status) · \(pass.files.formatted()) \(pass.countMeaning) · \(pass.findings) matches")
+                                    Text("\(pass.statusTitle) · \(pass.files.formatted()) \(pass.countMeaning) · \(pass.findings) matches")
                                         .font(.system(size: 10)).foregroundStyle(.secondary)
                                 }
                                 Spacer()
@@ -177,10 +177,12 @@ struct ScanResultsView: View {
                 Button("Export report…") { model.export(record) }
                 Button("Review scan console") { openLog(record.logPath) }.disabled(record.logPath.isEmpty)
                 Button("Privacy settings") { model.open("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") }
+                Button("Engines & sources") { dismiss(); model.page = .sources }
                 Spacer()
                 PrimaryButton(title: "Prepare another scan", icon: "arrow.clockwise") { dismiss(); model.rescan(record) }
             }.padding(20)
         }.frame(width: 850, height: 720).background(Palette.background)
+            .onAppear { showTechnical = record.warnings > 0 || record.outcome == .incomplete }
     }
     private func openLog(_ path: String) {
         guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else {

@@ -262,7 +262,7 @@ struct ScanView: View {
             ScopePicker()
             HStack {
                 Label(model.preferences.yaraXEnabled == true ? "ClamAV + YARA-X requested" : "ClamAV baseline", systemImage: "cpu")
-                Text("· \(model.sources.filter(\.enabled).count) optional sources enabled")
+                Text("· \(model.sources.filter { $0.enabled && ($0.engine == .clamav || model.preferences.yaraXEnabled == true) }.count) optional sources requested")
                 Spacer()
                 Button("Manage engines & sources") { model.page = .sources }
             }.font(.system(size: 11)).foregroundStyle(.secondary)

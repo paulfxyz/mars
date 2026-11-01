@@ -148,7 +148,8 @@ public struct Engine {
             let sources = storage.sources().filter(\.enabled)
             let yaraEnabled = preferences.yaraXEnabled == true
             let requested = sources.filter { $0.engine == .clamav || yaraEnabled }
-            let total = 1 + requested.count
+            let missingYaraSource = yaraEnabled && !requested.contains(where: { $0.engine == .yaraX })
+            let total = 1 + requested.count + (missingYaraSource ? 1 : 0)
             progress(ScanUpdate(stage: "Preparing your scan", explanation: "Checking the selected folders, engines, and sources. Nothing on your Mac will be changed.", totalPasses: total))
             if preferences.updateBeforeScan {
                 progress(ScanUpdate(stage: "Refreshing detection sources", explanation: "Downloading and validating updates before looking at your files.", totalPasses: total))
@@ -160,6 +161,7 @@ public struct Engine {
             }
             guard storage.hasDefinitions else { throw MarsError.message("Download definitions before your first scan.") }
             line("Scanning \(targets.joined(separator: ", "))")
+            line("[ClamAV / Official ClamAV] Starting baseline inspection.")
             line("ClamAV is loading its database. This can take a minute; the scan has no reliable percentage.")
             var parser = ScanParser()
             var observed = 0
@@ -192,6 +194,7 @@ public struct Engine {
             defer { if let plan { try? FileManager.default.removeItem(at: plan.list) } }
             for source in requested {
                 if cancellation.isCancelled { break }
+                line("[\(source.engine.rawValue) / \(source.name)] Starting this source's inspection.")
                 let active = storage.activeSource(source.id)
                 let logURL = storage.logs.appendingPathComponent("\(record.id.uuidString)-\(source.id).log")
                 progress(ScanUpdate(stage: "\(source.engine.rawValue) · \(source.name)", explanation: "Checking this source separately so every match has clear provenance.",
@@ -226,6 +229,8 @@ public struct Engine {
                         record.coverageNotes?.append(contentsOf: plan!.notes)
                         record.warnings += (plan!.skipped > 0 ? 1 : 0) + plan!.issues
                     }
+                    progress(ScanUpdate(stage: "YARA-X is checking raw files", explanation: "\(plan!.candidates.formatted()) candidate files submitted to this rule pack. Candidate count is not a confirmed inspection count. Archive members are not unpacked by this engine.",
+                        source: source.name, completedPasses: completed, totalPasses: total, findings: record.findings.count))
                     var extra = YaraParser()
                     let result = try ProcessRunner.run(yr, ["scan", "--output-format", "ndjson", "--disable-console-logs", "--threads", "2",
                         "--timeout", "3600", "--scan-list", active.path, plan!.list.path], cancellation: cancellation, log: logURL) { text in
@@ -240,8 +245,9 @@ public struct Engine {
                 }
                 completed += 1
             }
-            if yaraEnabled && !requested.contains(where: { $0.engine == .yaraX }) {
+            if missingYaraSource {
                 record.coverageNotes?.append("YARA-X was requested but no YARA-X source is enabled. No second-engine check ran.")
+                record.passes?.append(ScanPass(engine: "YARA-X", source: "No rules enabled", status: "notRun", warnings: 1))
                 record.warnings += 1
             }
             if cancellation.isCancelled { record.outcome = .cancelled }

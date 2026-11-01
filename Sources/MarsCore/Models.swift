@@ -76,6 +76,17 @@ public struct ScanPass: Codable, Identifiable {
     public var warnings: Int
     public var logPath: String
     public var countMeaning: String
+    public var statusTitle: String {
+        switch status {
+        case "completed": return "Finished"
+        case "threatsFound": return "Matches to review"
+        case "incomplete": return "Coverage limited"
+        case "failed": return "Could not finish"
+        case "cancelled": return "Stopped by you"
+        case "notRun": return "Did not run"
+        default: return status
+        }
+    }
     public init(engine: String, source: String, status: String, files: Int = 0, findings: Int = 0,
                 warnings: Int = 0, logPath: String = "", countMeaning: String = "engine-reported files") {
         self.engine = engine; self.source = source; self.status = status; self.files = files

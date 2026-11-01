@@ -163,8 +163,8 @@ public struct SourceManager {
             if ["yar", "yara"].contains(file.pathExtension.lowercased()) {
                 let text = try String(contentsOf: file)
                 // Includes can read unrelated local paths at compilation time. Require standalone packs.
-                if text.range(of: #"(?m)^\s*include\s+""#, options: .regularExpression) != nil {
-                    throw MarsError.message("YARA include directives are not allowed. Import self-contained, trusted rules.")
+                if text.range(of: #"\binclude\b"#, options: .regularExpression) != nil {
+                    throw MarsError.message("Imported YARA containing the include keyword is not allowed, even inside comments or strings. Use a trusted self-contained pack; rules must not open unrelated files at compilation time.")
                 }
             }
             try FileManager.default.copyItem(at: file, to: stage.appendingPathComponent(file.lastPathComponent))
@@ -255,7 +255,8 @@ public struct SourceManager {
         defer { try? FileManager.default.removeItem(at: home) }
         let key = home.appendingPathComponent("vendor.asc")
         try Data(Self.sanesecurityKey.utf8).write(to: key)
-        guard try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--import", key.path], cancellation: cancellation) == 0 else {
+        let ring = home.appendingPathComponent("vendor.gpg")
+        guard try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--dearmor", "--output", ring.path, key.path], cancellation: cancellation) == 0 else {
             throw MarsError.message("Could not load the pinned Sanesecurity verification key.")
         }
         for file in ["malwarehash.hsb", "sigwhitelist.ign2", "sanesecurity.ftm"] {
@@ -265,7 +266,8 @@ public struct SourceManager {
                 guard code == 0 else { throw MarsError.message("Sanesecurity mirror unavailable. Previous signatures remain unchanged.") }
             }
             var verified = false
-            let code = try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--no-auto-key-retrieve",
+            let code = try ProcessRunner.run(gpg, ["--no-options", "--homedir", home.path, "--batch", "--no-default-keyring",
+                "--keyring", ring.path, "--trust-model", "always", "--no-auto-key-retrieve", "--no-autostart",
                 "--status-fd", "1", "--verify", stage.appendingPathComponent("\(file).sig").path,
                 stage.appendingPathComponent(file).path], cancellation: cancellation) { text in
                     if text.contains("[GNUPG:] VALIDSIG ") { verified = true }
